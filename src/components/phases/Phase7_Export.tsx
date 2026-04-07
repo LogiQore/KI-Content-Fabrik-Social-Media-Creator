@@ -3,9 +3,9 @@ import { useState } from 'react';
 import type { Project, ContentItem } from '@/types';
 import PlatformBadge from '@/components/ui/PlatformBadge';
 
-interface Phase7Props { project: Project; items: ContentItem[]; onRestart: () => void; }
+interface Phase7Props { project: Project; items: ContentItem[]; onRestart: () => void; onBack?: () => void; }
 
-export default function Phase7Export({ project, items, onRestart }: Phase7Props) {
+export default function Phase7Export({ project, items, onRestart, onBack }: Phase7Props) {
   const [downloading, setDownloading] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -53,6 +53,7 @@ export default function Phase7Export({ project, items, onRestart }: Phase7Props)
           {downloading ? '⏳ Erstelle ZIP…' : '⬇ Alles als ZIP herunterladen'}
         </button>
         <button onClick={() => openFolder()} className="btn btn-ghost px-6">📁 Projektordner öffnen</button>
+        {onBack && <button onClick={onBack} className="btn btn-ghost px-6">← Zurück zum Editor</button>}
         <button onClick={onRestart} className="btn btn-ghost px-6">+ Neues Projekt</button>
       </div>
 

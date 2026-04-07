@@ -46,10 +46,16 @@ export async function POST(req: NextRequest) {
     md += `---\n\n`;
   });
 
-  // Datei im Projektverzeichnis speichern
+  // Datei im Projektverzeichnis speichern (fortlaufend nummeriert, nie ueberschreiben)
   const projectDir = path.join(process.cwd(), 'tmp', 'projects', projectId);
   const safeTitle = project.name.replace(/[^a-zA-Z0-9_\-äöüÄÖÜ ]/g, '').trim().replace(/ /g, '_');
-  const filePath = path.join(projectDir, `beitrag_erstellt_${safeTitle}.md`);
+
+  let num = 1;
+  let filePath = path.join(projectDir, `${String(num).padStart(2, '0')}_beitrag_${safeTitle}.md`);
+  while (fs.existsSync(filePath)) {
+    num++;
+    filePath = path.join(projectDir, `${String(num).padStart(2, '0')}_beitrag_${safeTitle}.md`);
+  }
 
   fs.writeFileSync(filePath, md, 'utf-8');
 

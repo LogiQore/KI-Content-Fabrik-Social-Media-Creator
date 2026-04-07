@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Project, ContentItem, StrategyIdea } from '@/types';
 import ImageCard from '@/components/ui/ImageCard';
 import KieTaskProgress from '@/components/ui/KieTaskProgress';
@@ -15,9 +15,9 @@ const IMAGE_MODELS = [
 
 interface ItemState { taskId?: string; state: string; progress: number; imageUrl?: string; imagePrompt?: string; errorMsg?: string; }
 
-interface Phase3Props { project: Project; ideas: StrategyIdea[]; onDone: (items: ContentItem[]) => void; }
+interface Phase3Props { project: Project; ideas: StrategyIdea[]; onDone: (items: ContentItem[]) => void; onBack?: () => void; }
 
-export default function Phase3Images({ project, ideas, onDone }: Phase3Props) {
+export default function Phase3Images({ project, ideas, onDone, onBack }: Phase3Props) {
   const [model, setModel] = useState(IMAGE_MODELS[0].value);
   const [itemStates, setItemStates] = useState<Record<string, ItemState>>({});
   const [items, setItems] = useState<ContentItem[]>(ideas.map(idea => ({
@@ -25,9 +25,38 @@ export default function Phase3Images({ project, ideas, onDone }: Phase3Props) {
     platform: idea.platform, aspectRatio: idea.aspectRatio, active: true,
     hashtags: idea.hashtagSuggestions,
   })));
+  const [describingAvatar, setDescribingAvatar] = useState(false);
+
+  // Cache avatar description so we only fetch it once
+  const avatarDescRef = useRef<string | null>(null);
 
   const updateItemState = (id: string, update: Partial<ItemState>) =>
     setItemStates(prev => ({ ...prev, [id]: { ...prev[id], ...update } }));
+
+  const fetchAvatarDescription = async (): Promise<string> => {
+    if (avatarDescRef.current !== null) return avatarDescRef.current;
+    if (!project.avatarPath || project.avatarPath === 'voice-over' || !project.avatarName) {
+      avatarDescRef.current = '';
+      return '';
+    }
+
+    setDescribingAvatar(true);
+    try {
+      const res = await fetch('/api/describe-avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatarPath: project.avatarPath, avatarName: project.avatarName }),
+      });
+      const data = await res.json();
+      avatarDescRef.current = data.description || '';
+      console.log('[Phase3] Avatar-Beschreibung:', (avatarDescRef.current ?? '').slice(0, 100));
+    } catch (e) {
+      console.error('[Phase3] Avatar-Beschreibung fehlgeschlagen:', e);
+      avatarDescRef.current = '';
+    }
+    setDescribingAvatar(false);
+    return avatarDescRef.current ?? '';
+  };
 
   const startPolling = useCallback((id: string, taskId: string) => {
     const interval = setInterval(async () => {
@@ -43,8 +72,9 @@ export default function Phase3Images({ project, ideas, onDone }: Phase3Props) {
             body: JSON.stringify({ url: data.resultUrls[0], projectId: project.id, type: 'images' }),
           });
           const dlData = await dlRes.json();
-          updateItemState(id, { state: 'success', progress: 100, imageUrl: dlData.publicPath || data.resultUrls[0] });
-          setItems(prev => prev.map(it => it.id === id ? { ...it, imageUrl: dlData.publicPath || data.resultUrls[0], imageLocalPath: dlData.localPath } : it));
+          const remoteUrl = data.resultUrls[0];
+          updateItemState(id, { state: 'success', progress: 100, imageUrl: dlData.publicPath || remoteUrl });
+          setItems(prev => prev.map(it => it.id === id ? { ...it, imageUrl: dlData.publicPath || remoteUrl, imageLocalPath: dlData.localPath, imageRemoteUrl: remoteUrl } : it));
         } else if (data.state === 'fail') {
           clearInterval(interval);
           updateItemState(id, { state: 'fail', errorMsg: data.failMsg || 'Fehler' });
@@ -55,12 +85,27 @@ export default function Phase3Images({ project, ideas, onDone }: Phase3Props) {
     }, 3000);
   }, [project.id]);
 
-  const generateImage = async (item: ContentItem) => {
+  const generateImage = async (item: ContentItem, avatarDescription?: string) => {
     updateItemState(item.id, { state: 'waiting', progress: 5, imageUrl: undefined, errorMsg: undefined });
     try {
+      // Fetch avatar description if not provided
+      const desc = avatarDescription ?? await fetchAvatarDescription();
+
       const res = await fetch('/api/generate-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contentTitle: item.title, contentDescription: item.description, platform: item.platform, aspectRatio: item.aspectRatio, brandStyle: project.brandColors.join(', '), userInstructions: project.userInstructions, bildstilPrompt: project.bildstilPrompt, avatarPath: project.avatarPath, avatarName: project.avatarName, model }),
+        body: JSON.stringify({
+          contentTitle: item.title,
+          contentDescription: item.description,
+          platform: item.platform,
+          aspectRatio: item.aspectRatio,
+          brandStyle: project.brandColors.join(', '),
+          userInstructions: project.userInstructions,
+          bildstilPrompt: project.bildstilPrompt,
+          avatarPath: project.avatarPath,
+          avatarName: project.avatarName,
+          avatarDescription: desc,
+          model,
+        }),
       });
       const data = await res.json();
       if (data.taskId) {
@@ -74,9 +119,12 @@ export default function Phase3Images({ project, ideas, onDone }: Phase3Props) {
   };
 
   const generateAll = async () => {
+    // Fetch avatar description ONCE before generating all images
+    const avatarDescription = await fetchAvatarDescription();
+
     const pending = items.filter(item => !itemStates[item.id]?.imageUrl);
     for (let i = 0; i < pending.length; i++) {
-      generateImage(pending[i]);
+      generateImage(pending[i], avatarDescription);
       if (i < pending.length - 1) await new Promise(r => setTimeout(r, 2500));
     }
   };
@@ -92,9 +140,17 @@ export default function Phase3Images({ project, ideas, onDone }: Phase3Props) {
         <select value={model} onChange={e => setModel(e.target.value)} className="w-52 text-sm">
           {IMAGE_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
-        <button onClick={generateAll} className="btn btn-primary px-6">🚀 Alle generieren</button>
+        <button onClick={generateAll} disabled={describingAvatar} className="btn btn-primary px-6">
+          {describingAvatar ? '🔍 Avatar wird analysiert...' : '🚀 Alle generieren'}
+        </button>
         {doneCount > 0 && <span className="text-sm text-green-400">✓ {doneCount}/{items.length} fertig</span>}
       </div>
+
+      {describingAvatar && (
+        <div className="text-center text-sm text-[#94a3b8] animate-pulse">
+          Avatar wird analysiert für konsistente Darstellung...
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {items.map(item => {
@@ -119,8 +175,9 @@ export default function Phase3Images({ project, ideas, onDone }: Phase3Props) {
         })}
       </div>
 
-      <div className="flex justify-end pt-2">
-        <button onClick={() => onDone(items)} className="btn btn-primary px-8">
+      <div className="flex justify-between pt-2">
+        {onBack && <button onClick={onBack} className="btn btn-ghost px-4">← Zurück</button>}
+        <button onClick={() => onDone(items)} className="btn btn-primary px-8 ml-auto">
           Weiter → Texte & Hashtags ✍️
         </button>
       </div>

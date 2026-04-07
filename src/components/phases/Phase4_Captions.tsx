@@ -8,9 +8,9 @@ const MAX_CHARS: Record<string, number> = {
   youtube_shorts: 5000, youtube_video: 5000, pinterest: 500, linkedin_beitrag: 3000,
 };
 
-interface Phase4Props { project: Project; items: ContentItem[]; onDone: (items: ContentItem[]) => void; }
+interface Phase4Props { project: Project; items: ContentItem[]; onDone: (items: ContentItem[]) => void; onBack?: () => void; }
 
-export default function Phase4Captions({ project, items: initialItems, onDone }: Phase4Props) {
+export default function Phase4Captions({ project, items: initialItems, onDone, onBack }: Phase4Props) {
   const [items, setItems] = useState<ContentItem[]>(initialItems);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [errors, setErrors]   = useState<Record<string, string>>({});
@@ -224,8 +224,9 @@ export default function Phase4Captions({ project, items: initialItems, onDone }:
         })}
       </div>
 
-      <div className="flex justify-end">
-        <button onClick={() => onDone(items)} className="btn btn-primary px-8">
+      <div className="flex justify-between">
+        {onBack && <button onClick={onBack} className="btn btn-ghost px-4">← Zurück</button>}
+        <button onClick={() => onDone(items)} className="btn btn-primary px-8 ml-auto">
           Weiter → Videos 🎬
         </button>
       </div>

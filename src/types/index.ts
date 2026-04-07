@@ -24,7 +24,7 @@ export interface Project {
 export interface ContentItem {
   id: string; type: 'image' | 'carousel' | 'reel' | 'story' | 'video';
   title: string; description: string; platform: Platform; aspectRatio: string; active: boolean;
-  imagePrompt?: string; imageUrl?: string; imageLocalPath?: string;
+  imagePrompt?: string; imageUrl?: string; imageLocalPath?: string; imageRemoteUrl?: string;
   videoPrompt?: string; videoUrl?: string; videoLocalPath?: string;
   videoMode?: 'none' | 'image-to-video' | 'text-to-video';
   caption?: string; hashtags?: string[];

@@ -9,9 +9,9 @@ const STRATEGY_MODES = [
   { value: 'story', label: 'Zusammenhängende Story' },
 ];
 
-interface Phase2Props { project: Project; onDone: (ideas: StrategyIdea[]) => void; }
+interface Phase2Props { project: Project; onDone: (ideas: StrategyIdea[]) => void; onBack?: () => void; }
 
-export default function Phase2Strategy({ project, onDone }: Phase2Props) {
+export default function Phase2Strategy({ project, onDone, onBack }: Phase2Props) {
   const [ideas, setIdeas] = useState<StrategyIdea[]>([]);
   const [loading, setLoading] = useState(false);
   const [count, setCount] = useState(6);
@@ -196,7 +196,10 @@ export default function Phase2Strategy({ project, onDone }: Phase2Props) {
             ))}
           </div>
           <div className="flex justify-between items-center pt-4">
-            <p className="text-sm text-[#94a3b8]">{activeCount} von {ideas.length} Ideen aktiv</p>
+            <div className="flex items-center gap-3">
+              {onBack && <button onClick={onBack} className="btn btn-ghost px-4">← Zurück</button>}
+              <p className="text-sm text-[#94a3b8]">{activeCount} von {ideas.length} Ideen aktiv</p>
+            </div>
             <button onClick={() => onDone(ideas.filter(i => i.active))} disabled={activeCount === 0}
               className="btn btn-primary px-8 disabled:opacity-50">
               Weiter → {activeCount} Bilder generieren 🎨

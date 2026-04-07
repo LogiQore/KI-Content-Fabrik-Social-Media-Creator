@@ -144,22 +144,22 @@ export default function HomePage() {
           <Phase1Setup existingProject={project} onProjectCreated={handleProjectCreated} />
         )}
         {currentStep === 2 && project && (
-          <Phase2Strategy project={project} onDone={handleStrategyDone} />
+          <Phase2Strategy project={project} onDone={handleStrategyDone} onBack={() => setCurrentStep(1)} />
         )}
         {currentStep === 3 && project && (
-          <Phase3Images project={project} ideas={ideas} onDone={handleImagesDone} />
+          <Phase3Images project={project} ideas={ideas} onDone={handleImagesDone} onBack={() => setCurrentStep(2)} />
         )}
         {currentStep === 4 && project && (
-          <Phase4Captions project={project} items={items} onDone={handleCaptionsDone} />
+          <Phase4Captions project={project} items={items} onDone={handleCaptionsDone} onBack={() => setCurrentStep(3)} />
         )}
         {currentStep === 5 && project && (
-          <Phase5Video project={project} items={items} onDone={handleVideosDone} />
+          <Phase5Video project={project} items={items} onDone={handleVideosDone} onBack={() => setCurrentStep(4)} />
         )}
         {currentStep === 6 && project && (
-          <Phase6Editor project={project} items={items} onDone={handleEditorDone} />
+          <Phase6Editor project={project} items={items} onDone={handleEditorDone} onBack={() => setCurrentStep(5)} />
         )}
         {currentStep === 7 && project && (
-          <Phase7Export project={project} items={items} onRestart={handleRestart} />
+          <Phase7Export project={project} items={items} onRestart={handleRestart} onBack={() => setCurrentStep(6)} />
         )}
         {!project && currentStep !== 1 && (
           <div className="text-center py-20">

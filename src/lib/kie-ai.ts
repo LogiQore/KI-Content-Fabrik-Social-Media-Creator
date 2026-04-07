@@ -160,10 +160,13 @@ export async function getVeoTaskStatus(taskId: string): Promise<{ state: string;
   const data = json.data;
   // successFlag: 0=processing, 1=complete, 2=failed, 3=post-creation failure
   if (data.successFlag === 1) {
-    return { state: 'success', resultUrls: data.resultUrls || [data.videoUrl].filter(Boolean) };
+    // resultUrls koennen direkt in data oder unter data.response liegen
+    const urls = data.response?.resultUrls || data.resultUrls || [data.videoUrl].filter(Boolean);
+    console.log('[veo-poll] Success! URLs:', urls);
+    return { state: 'success', resultUrls: urls };
   }
   if (data.successFlag === 2 || data.successFlag === 3) {
-    return { state: 'fail', failMsg: data.failMsg || data.errorMsg || 'Veo generation failed' };
+    return { state: 'fail', failMsg: data.failMsg || data.errorMessage || data.errorMsg || 'Veo generation failed' };
   }
   return { state: 'generating' };
 }

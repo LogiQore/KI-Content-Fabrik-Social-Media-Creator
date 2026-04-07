@@ -2,7 +2,7 @@
 
 > Lokale Next.js Web-App zur KI-gestuetzten Erstellung von Social-Media-Content
 > Arbeitsverzeichnis: `E:\1_CLAUDE_Web_apps\KI_Content_Fabrik_Social_Media_Creator`
-> Erstellt: 2026-04-06 | Letzte Aktualisierung: 2026-04-06 (Session 5)
+> Erstellt: 2026-04-06 | Letzte Aktualisierung: 2026-04-07 (Session 6)
 
 ---
 
@@ -21,11 +21,13 @@ fertigen, exportierbaren Bild/Video-Content fuer alle gaengigen Social-Media-Pla
 - Virale Hook-Generierung (5 Vorschlaege per KI, auswaehlbar)
 - Story-Modus: zusammenhaengende Story in X Teilen statt einzelner Ideen
 - Bildstil-Auswahl (30 Stile aus bildstile.xlsx)
-- Avatar / Character-Sheet Unterstuetzung (Ordner: avatare/)
+- Avatar / Character-Sheet mit automatischer Komprimierung und KI-Beschreibung
 - Voice-Over Charakter Option
 - Integrierter Video-Editor: Canvas-Preview + Multi-Track-Timeline
-- Export: Einzel-Download + ZIP + Windows Explorer + beitrag_erstellt.md
+- Export: Einzel-Download + ZIP + Windows Explorer + fortlaufend nummerierte .md Dateien
 - Ausgabeformate aus social_media_formate.xlsx
+- Zurueck-Navigation in allen Phasen (Stepper + Buttons)
+- GitHub-Integration (eigenes Repository)
 
 ---
 
@@ -39,9 +41,11 @@ fertigen, exportierbaren Bild/Video-Content fuer alle gaengigen Social-Media-Pla
 | KI-Modelle (Bild) | kie.ai: Nano Banana 2, Seedream 4.5, Flux 2 Pro, Ideogram V3 |
 | KI-Modelle (Video) | kie.ai: Veo 3 (Standard), Kling 2.6/3.0 |
 | KI-Text / Analyse | Claude Sonnet 4.6 via kie.ai Anthropic-Endpoint |
+| Bildverarbeitung | sharp (Avatar-Komprimierung) |
 | Video-Editor | Browser-native Canvas + FFmpeg.wasm |
 | Dateispeicherung | Lokal (`./tmp/`) |
 | Konfiguration | `.env.local` |
+| Versionskontrolle | Git + GitHub (LogiQore/KI-Content-Fabrik-Social-Media-Creator) |
 | Starter-Skripte | `WebApp_starten.bat`, `WebApp_beenden.bat` |
 
 ---
@@ -98,14 +102,17 @@ PROJECTS_DIR=./tmp/projects
 
 ### Phase 3 — Bild-Generierung
 - Modell-Auswahl: Nano Banana 2 (empfohlen fuer Avatare), Seedream 4.5, Flux 2 Pro, Ideogram V3
+- **Avatar-Konsistenz:** Avatar wird komprimiert (sharp, max 1024px), per Claude beschrieben und die Beschreibung in jeden Prompt eingebaut
 - Avatar-Referenzbild wird automatisch an das Modell uebergeben
 - Nano Banana 2: `image_input` Array fuer echte Charakterkonsistenz
 - Bilder werden ohne Text generiert (keine Beschriftungen, Titel etc.)
+- Originale kie.ai-URLs (`imageRemoteUrl`) werden fuer spaetere Videogenerierung gespeichert
 - Galerie mit Regenerieren/Prompt-bearbeiten
 
 ### Phase 4 — Caption & Hashtag Generierung
 - Claude generiert Caption + CTA + Hashtag-Set pro Beitrag (Deutsch)
 - Editierbar, Zeichen-Zaehler, Neu-generieren-Button
+- **Export:** `beitrag_erstellt.md` — fortlaufend nummeriert (01_, 02_, ...), nie ueberschrieben
 
 ### Phase 5 — Video-Erstellung
 - **Standard-Modell: Veo 3 Fast** (voreingestellt), alternativ Veo 3 Quality, Kling 2.6/3.0
@@ -113,9 +120,13 @@ PROJECTS_DIR=./tmp/projects
 - 2 editierbare Script-Felder pro Teil:
   - **Handlung & Bewegung** — Was passiert, Charakter-Aktionen
   - **Kamera & Perspektive** — Kamerawinkel, Bewegung, Uebergaenge
-- KI-Script-Generierung per Button oder manuell schreiben
-- Globale Buttons: "Alle Scripts generieren" + "Alle Videos generieren"
-- Option "Nur Bild" (kein Video) weiterhin verfuegbar
+- **Modell-optimierte Scripts:** KI-generierte Prompts sind auf das jeweilige Modell (Veo 3, Kling) zugeschnitten
+- **Szenenbild-Kontext:** imagePrompt, Caption und Avatar fliessen in die Script-Generierung ein
+- Globale Buttons: "Alle Scripts generieren" + "Alle Videos generieren" + "videoscript.md"
+- **Fortschrittsbalken** bei "Alle Videos generieren" (Video 1/3, 2/3, 3/3 mit Prozentanzeige)
+- Option "Nur Standbild / kein Video" pro Teil
+- **Export:** `videoscript.md` — fortlaufend nummeriert, nie ueberschrieben
+- **Veo 3 Aspect-Ratio-Mapping:** 1:1, 4:5, 2:3 werden automatisch auf 9:16 gemappt
 
 ### Phase 6 — Integrierter Video-Editor
 - Canvas-Preview + Properties-Panel
@@ -131,7 +142,31 @@ PROJECTS_DIR=./tmp/projects
 - Content-Kalender-Ansicht
 - Einzel-Download + ZIP-Download
 - "Im Explorer oeffnen" Button
-- beitrag_erstellt.md pro Beitrag
+- Zurueck-Button zum Editor
+
+---
+
+## Avatar-System
+
+### Komprimierung (automatisch)
+- Avatar-Bilder (oft 19-24 MB) werden automatisch mit `sharp` auf max 1024px / ~200KB komprimiert
+- Cache: `avatare/.cache/{name}_ref.png` — wird nur einmal erstellt
+- Bei neuen Avataren automatisch beim ersten Laden komprimiert
+
+### KI-Beschreibung (automatisch)
+- Claude analysiert das Avatar-Bild einmalig und erstellt eine detaillierte Charakter-Beschreibung
+- Beschreibt: Art-Stil, Geschlecht, Alter, Hautton, Haare, Augen, Gesichtsform, Kleidung
+- Cache: `avatare/.cache/{name}_desc.txt` — ueberlebt Server-Neustarts
+- Diese Beschreibung wird wortwoertlich in jeden Bild-Prompt eingebaut
+
+### Konsistenz-Workflow
+```
+Avatar-Auswahl → Komprimierung (sharp) → KI-Beschreibung (Claude)
+                     ↓                         ↓
+              Referenzbild an Modell    Beschreibung in Prompt
+                     ↓                         ↓
+              Konsistentes Aussehen in allen generierten Bildern
+```
 
 ---
 
@@ -145,24 +180,12 @@ Body:     { model, system, messages: [{role:"user", content}], max_tokens, strea
 Response: { content: [{ type:"text", text:"..." }] }
 ```
 
-| Richtig | Falsch (nicht verwenden) |
-|---------|--------------------------|
-| `POST /claude/v1/messages` | `/api/v1/chat/completions` -> "Operation not found" |
-
 ### Bild-Generierung
 
 **Nano Banana 2 (empfohlen fuer Avatare):**
 ```
 Model:  "nano-banana-2"
 Input:  { prompt, aspect_ratio, resolution: "1K", output_format: "png", image_input?: [url] }
-```
-- `image_input`: Array von Referenzbild-URLs (bis zu 14) fuer Charakterkonsistenz
-- Avatar wird als Base64 hochgeladen -> URL -> image_input
-
-**Seedream 4.5:**
-```
-Model:  "seedream/4.5-text-to-image"
-Input:  { prompt, aspect_ratio, quality: "basic", reference_image_url? }
 ```
 
 **Alle Bildmodelle:**
@@ -181,47 +204,16 @@ Models:   "veo3_fast" (Standard), "veo3" (Quality), "veo3_lite" (Budget)
 Input:    { prompt, model, aspect_ratio, imageUrls?: [url], enableTranslation: true }
 ```
 - Dauer: fix ~8s pro Clip (nicht einstellbar)
-- `imageUrls`: 1 Bild (Bild->Video) oder 2 Bilder (Start+End-Frame)
-- Eigenes Polling: `successFlag` 0=processing, 1=complete, 2=failed
-- Poll-Route: `/api/poll-task?taskId=...&veo=1`
+- `aspect_ratio`: Nur "9:16", "16:9" oder "Auto" erlaubt
+- `imageUrls`: Remote-URL (https://...) erforderlich, keine lokalen URLs!
+- Polling: `successFlag` 0=processing, 1=complete, 2=failed
+- **Wichtig:** resultUrls liegen unter `data.response.resultUrls` (nicht direkt unter `data`)
 
 **Kling 2.6 (Alternative):**
 ```
 Bild->Video: "kling-2.6/image-to-video" -> { prompt, image_urls:[url], sound:false, duration:"5" }
 Text->Video: "kling-2.6/text-to-video"  -> { prompt, aspect_ratio, duration:"5", sound:false }
 ```
-
-| Detail | Richtig | Falsch |
-|--------|---------|--------|
-| Modell | `kling-2.6/image-to-video` | `kling/image-to-video` |
-| Bild-Input | `image_urls: [url]` (Array) | `image_url: url` |
-| Dauer | `duration: "5"` (String) | `duration: 5` (Zahl) |
-| Sound | `sound: false` (PFLICHT!) | sound weglassen |
-
-### Asset-Pipeline
-
-```
-kie.ai URL -> POST /api/upload-asset -> lokal in tmp/projects/{id}/
-Browser    -> GET /api/serve-asset?path=...
-```
-
-### JSON-Parser (lib/claude.ts)
-
-3-stufiger robuster Parser: direkt -> extractAndFixJSON (Single-Quotes, Fences) -> Kontrollzeichen-Strip
-
----
-
-## Bildgenerierung — Modelle im Vergleich
-
-| Modell | Modell-String | Avatar-Support | Besonderheiten |
-|--------|---------------|----------------|----------------|
-| Nano Banana 2 | `nano-banana-2` | `image_input` (bis 14 Bilder) | Charakterkonsistenz, 4K, Text-Rendering |
-| Seedream 4.5 | `seedream/4.5-text-to-image` | `reference_image_url` (schwach) | Schnell, guenstig |
-| Seedream 3.0 | `bytedance/seedream` | — | Nutzt `image_size` statt `aspect_ratio` |
-| Ideogram V3 | `ideogram/v3-text-to-image` | — | Gutes Text-Rendering |
-| Flux 2 Pro | `flux-2/pro-text-to-image` | — | Hohe Qualitaet |
-
-**Empfehlung:** Nano Banana 2 fuer Projekte mit Avatar/Charakter. Seedream 4.5 fuer schnelle Generierung ohne Avatar.
 
 ---
 
@@ -230,11 +222,15 @@ Browser    -> GET /api/serve-asset?path=...
 ```
 KI_Content_Fabrik_Social_Media_Creator/
 |-- README.md                          <-- Diese Datei (Gesamtdokumentation)
+|-- github_anleitung.md                <-- Git/GitHub Anleitung fuer den Nutzer
 |-- AUFGABENBESCHREIBUNG_fuer_ClaudeCode.md  (Original-Spezifikation)
 |-- WebApp_starten.bat / WebApp_beenden.bat / start_server.ps1
 |-- package.json / tsconfig.json / next.config.js / tailwind.config.ts
 |-- .env.local                         (API-Keys, NICHT in git)
-|-- avatare/                           (Character-Sheets: Wauzi.png, Lisa.png, ...)
+|-- avatare/                           (Character-Sheets: Annett_pixar.png, Lisa.png, ...)
+|   |-- .cache/                        (komprimierte Bilder + Beschreibungen, auto-generiert)
+|       |-- {name}_ref.png             (komprimiertes Referenzbild, ~200KB)
+|       |-- {name}_desc.txt            (KI-generierte Charakter-Beschreibung)
 |-- bildstile.xlsx                     (30 Bildstile)
 |-- social_media_formate.xlsx          (Plattform-Formate)
 |-- tmp/projects/{id}/                 (Projektdaten + generierte Assets)
@@ -243,33 +239,37 @@ KI_Content_Fabrik_Social_Media_Creator/
 |   |-- videos/                        (generierte Videos)
 |   |-- audio/                         (Musik)
 |   |-- export/                        (finale Export-Dateien)
+|   |-- 01_beitrag_{name}.md           (fortlaufend nummeriert)
+|   |-- 01_videoscript_{name}.md       (fortlaufend nummeriert)
 |-- src/
     |-- app/
-    |   |-- page.tsx                   (Haupt-UI: 7-Phasen-Stepper)
+    |   |-- page.tsx                   (Haupt-UI: 7-Phasen-Stepper mit Zurueck-Navigation)
     |   |-- layout.tsx / globals.css
     |   |-- api/
     |       |-- project/               Projekt speichern/laden
     |       |-- strategy/              Claude Content-Strategie
-    |       |-- generate-image/        Bildgenerierung (Nano Banana 2 / Seedream / etc.)
-    |       |-- generate-video/        Videogenerierung (Veo 3 / Kling)
+    |       |-- generate-image/        Bildgenerierung mit Avatar-Beschreibung
+    |       |-- generate-video/        Videogenerierung (Veo 3 / Kling) mit Remote-URL
     |       |-- generate-hooks/        Virale Hook-Generierung (5 Vorschlaege)
     |       |-- generate-caption/      Claude Captions
     |       |-- generate-music/        Suno Musik
-    |       |-- generate-video-script/ Video-Script Generierung
-    |       |-- poll-task/             kie.ai Task-Status Polling
+    |       |-- generate-video-script/ Modell-optimierte Video-Scripts
+    |       |-- describe-avatar/       KI-Beschreibung des Avatars (mit Datei-Cache)
+    |       |-- poll-task/             kie.ai Task-Status Polling (inkl. Veo)
     |       |-- upload-asset/          Asset von kie.ai herunterladen
     |       |-- serve-asset/           Lokale Assets an Browser ausliefern
     |       |-- render/                Server-seitiges FFmpeg Render (Fallback)
     |       |-- download-zip/          ZIP Export
-    |       |-- export-md/             Beitrag-Markdown Export
+    |       |-- export-md/             Beitrag-Markdown Export (fortlaufend nummeriert)
+    |       |-- export-videoscript/    Videoscript-Markdown Export (fortlaufend nummeriert)
     |       |-- open-folder/           Windows Explorer oeffnen
-    |       |-- avatare/               Avatar-Liste
+    |       |-- avatare/               Avatar-Liste (mit auto-Komprimierung via sharp)
     |       |-- bildstile/             Bildstil-Liste
     |       |-- formats/               Plattform-Formate
     |-- components/
-    |   |-- Stepper.tsx
+    |   |-- Stepper.tsx                (klickbar + Zurueck-Navigation)
     |   |-- phases/
-    |   |   |-- Phase1_Setup.tsx ... Phase7_Export.tsx
+    |   |   |-- Phase1_Setup.tsx ... Phase7_Export.tsx (alle mit onBack)
     |   |-- editor/
     |   |   |-- Timeline.tsx, Preview.tsx, PropertiesPanel.tsx, ...
     |   |-- ui/
@@ -282,111 +282,79 @@ KI_Content_Fabrik_Social_Media_Creator/
     |   |-- useKieTask.ts              React Hook: Task + Polling
     |   |-- useEditor.ts              Editor-Zustand
     |-- types/
-        |-- index.ts                   Alle TypeScript-Typen
+        |-- index.ts                   Alle TypeScript-Typen (inkl. imageRemoteUrl)
 ```
-
----
-
-## UI-Design / Farbschema
-
-```css
-background:   #0f0f1a   (sehr dunkel)
-surface:      #1a1a2e   (dunkel blau-lila)
-accent:       #7c3aed   (Lila — Haupt-Akzent)
-accent-light: #a855f7
-text:         #f1f5f9   (fast weiss)
-text-muted:   #94a3b8   (grau)
-success:      #10b981   (gruen)
-error:        #ef4444   (rot)
-border:       #2d2d44
-```
-
-Layout: App-Header (lila), Credits oben rechts, 7-Phasen-Stepper als Pills,
-Phase 6 (Editor) im Vollbild-Modus.
-
----
-
-## Wichtige Implementierungs-Hinweise
-
-1. **Kein `!` im Pfad** — Webpack reserviert `!`. Pfad `E:\1_CLAUDE_Web_apps\...` ist korrekt.
-2. **kie.ai ist async** — IMMER pollen bis `state === "success"`. Timeout: 10 Minuten.
-3. **Asset-Download:** Generierte URLs von kie.ai verfallen nach 14 Tagen -> immer lokal speichern.
-4. **FFmpeg.wasm** braucht CORP/COOP Headers (in next.config.js konfiguriert).
-5. **Rate Limiting** — Max 20 Requests / 10 Sekunden bei kie.ai.
-6. **Projekte persistent** — Jedes Projekt = Ordner `./tmp/projects/{projectId}/` mit `project.json`.
-7. **pip ist defekt auf diesem System** — Keine Python-Dependencies! Alles in Node.js/TypeScript.
-8. **Bilder ohne Text** — Bildprompts enthalten explizite Anweisung: kein Text im Bild.
-9. **Avatar-Workflow:** Avatar-Bild -> Base64-Upload -> URL -> als `image_input` (Nano Banana 2) oder `reference_image_url` (Seedream) ans Modell.
-10. **Plattform-Formate** aus `social_media_formate.xlsx` — Fallback auf 7 eingebaute Plattformen bei Lese-Fehler.
-
----
-
-## next.config.js — Pflicht-Headers fuer FFmpeg.wasm
-
-```javascript
-const nextConfig = {
-  async headers() {
-    return [{
-      source: "/(.*)",
-      headers: [
-        { key: "Cross-Origin-Embedder-Policy", value: "require-corp" },
-        { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-      ],
-    }];
-  },
-};
-module.exports = nextConfig;
-```
-
----
-
-## Videogenerierung — Modelle im Vergleich
-
-| Modell | Modell-String | Modus | Dauer | Kosten/Clip |
-|--------|---------------|-------|-------|-------------|
-| Veo 3 Fast | `veo3_fast` | Bild->Video | 8s fix | ~60 Credits |
-| Veo 3 Quality | `veo3` | Bild->Video | 8s fix | ~400 Credits |
-| Veo 3 Lite | `veo3_lite` | Bild->Video | 8s fix | guenstig |
-| Kling 2.6 | `kling-2.6/image-to-video` | Bild->Video | 5s/10s | mittel |
-| Kling 2.6 | `kling-2.6/text-to-video` | Text->Video | 5s/10s | mittel |
-| Kling 3.0 | `kling-3.0/image-to-video` | Bild->Video | 5s/10s | mittel |
-
-**Empfehlung:** Veo 3 Fast als Standard fuer beste Qualitaet bei akzeptablen Kosten.
 
 ---
 
 ## Arbeitsstand / Aenderungsprotokoll
 
-### Session 5 (2026-04-06) — Aktuelle Session
+### Session 6 (2026-04-07) — Aktuelle Session
+
+**GitHub-Integration:**
+- Eigenes Repository erstellt: https://github.com/LogiQore/KI-Content-Fabrik-Social-Media-Creator
+- GitHub CLI (gh) authentifiziert und konfiguriert
+- `github_anleitung.md` erstellt (Git-Grundlagen, Workflow, Vorgaengerversionen zurueckholen)
+
+**Avatar-Konsistenz (komplett neues System):**
+- `sharp` als Dependency hinzugefuegt fuer Bild-Komprimierung
+- Avatar-Bilder werden automatisch auf max 1024px / ~200KB komprimiert (`avatare/.cache/`)
+- Neuer API-Endpunkt `/api/describe-avatar`: Claude beschreibt den Avatar einmalig (Datei-Cache)
+- Avatar-Beschreibung wird wortwoertlich in jeden Bild-Prompt eingebaut
+- Konsistenter Charakter ueber alle generierten Bilder hinweg
+
+**Fortlaufend nummerierte Exports (nie ueberschreiben):**
+- `beitrag_erstellt.md` → `01_beitrag_{name}.md`, `02_beitrag_{name}.md`, ...
+- Neuer Endpunkt `/api/export-videoscript` + Button "videoscript.md" in Phase 5
+- `videoscript.md` → `01_videoscript_{name}.md`, `02_videoscript_{name}.md`, ...
+
+**Zurueck-Navigation in allen Phasen:**
+- Jede Phase (2-7) hat einen "Zurueck"-Button links unten
+- Stepper oben bleibt ebenfalls klickbar fuer abgeschlossene Schritte
+
+**Video-Script-Generierung (komplett ueberarbeitet):**
+- Modell-spezifische Prompt-Guides (Veo 3, Kling 2.6/3.0) mit Staerken und Limitierungen
+- Szenenbild-Kontext (imagePrompt) fliesst in Script-Generierung ein
+- Caption/Kernaussage wird beruecksichtigt fuer emotional passende Handlung
+- Avatar-Name wird als Hauptdarsteller referenziert
+- Dauer-bewusste Scripts (optimiert auf 5s/8s/10s)
+- Image-to-Video vs Text-to-Video Unterscheidung im Prompt
+
+**Video-Generierung (Bugfixes):**
+- Veo 3 Aspect-Ratio Fix: Nur 9:16, 16:9, Auto erlaubt — automatisches Mapping
+- Remote-URL Fix: Bilder werden als `imageRemoteUrl` (kie.ai URL) gespeichert statt lokaler URLs
+- Veo Polling Fix: `data.response.resultUrls` wird korrekt ausgelesen (vorher fehlerhaft)
+- Videos werden jetzt erfolgreich generiert und heruntergeladen
+
+**Batch-Video-Generierung mit Fortschritt:**
+- "Alle Videos generieren" zeigt Fortschrittsbalken (Video 1/3, 2/3, 3/3)
+- 2,5 Sekunden Pause zwischen jedem Video-Start
+- Button deaktiviert waehrend Batch laeuft
+- Abschluss-Meldung nach Fertigstellung
+
+**UI-Verbesserungen:**
+- "Nur Bild" umbenannt zu "Nur Standbild / kein Video" fuer Klarheit
+
+### Session 5 (2026-04-06)
 
 **Bildgenerierung:**
-- Nano Banana 2 als Standard-Bildmodell hinzugefuegt (echte Charakterkonsistenz via `image_input`)
-- Avatar-Referenzbild wird korrekt an Nano Banana 2 uebergeben
+- Nano Banana 2 als Standard-Bildmodell (echte Charakterkonsistenz via `image_input`)
 - Explizite Anweisung: KEIN Text in generierten Bildern
 
-**Content-Strategie (Phase 2) — komplett erweitert:**
-- Neuer 2-Schritt-Flow: erst Hook waehlen, dann Strategie generieren
-- 5 virale Hook-Vorschlaege per KI (oder eigenen Hook schreiben)
-- Neues Modus-Dropdown (erweiterbar): "Einzelne Ideen" oder "Zusammenhaengende Story"
-- Story-Modus: fortlaufende Geschichte in X Teilen mit rotem Faden
-- Neue API-Route: `/api/generate-hooks`
+**Content-Strategie (Phase 2):**
+- 2-Schritt-Flow: erst Hook waehlen, dann Strategie generieren
+- 5 virale Hook-Vorschlaege per KI
+- Story-Modus: fortlaufende Geschichte in X Teilen
 
-**Video-Erstellung (Phase 5) — komplett ueberarbeitet:**
-- Veo 3 als Standard-Videomodell integriert (eigener kie.ai Endpoint)
-- Modell + Dauer pro Teil separat einstellbar
-- Script-Editor von 4 auf 2 Felder reduziert (Handlung + Kamera)
-- Globale Buttons: "Alle Scripts generieren" + "Alle Videos generieren"
-- Veo3-Polling ueber eigenen Endpoint mit `?veo=1` Parameter
-
-**Dokumentation:**
-- README_First.md und READMEFIRST_datei.md in README.md konsolidiert (geloescht)
+**Video-Erstellung (Phase 5):**
+- Veo 3 als Standard-Videomodell integriert
+- Script-Editor: 2 Felder (Handlung + Kamera)
 
 ### Offene Punkte / Naechste Schritte
-- Veo 3 im Live-Test pruefen (API-Aufruf + Polling verifizieren)
-- Story-Modus testen (Hook -> Story -> Bilder -> Videos Gesamtflow)
-- Editor (Phase 6): Videos zu einem Gesamtvideo zusammenfuegen
+- Editor (Phase 6): Videos zu einem Gesamtvideo zusammenfuegen testen
 - Ggf. Veo 3 Extend-Video Feature nutzen fuer laengere Clips
+- Upload-Endpunkt bei kie.ai hat sich geaendert — `uploadFileBase64` ggf. aktualisieren
 
 ---
 
-*Version: 3.0 — 2026-04-06 (Session 5)*
+*Version: 4.0 — 2026-04-07 (Session 6)*

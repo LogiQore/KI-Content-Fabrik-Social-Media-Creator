@@ -7,7 +7,20 @@ export async function POST(req: NextRequest) {
 
   const isVeo = model?.startsWith('veo3');
 
+  // Veo 3 unterstuetzt nur 16:9, 9:16 und Auto
+  const veoRatioMap: Record<string, string> = {
+    '9:16': '9:16', '16:9': '16:9',
+    '1:1': '9:16', '4:5': '9:16', '2:3': '9:16',
+  };
+  const veoAspect = isVeo ? (veoRatioMap[aspectRatio] || '9:16') : aspectRatio;
+
   try {
+    // imageUrl sollte jetzt eine Remote-URL (https://...) sein
+    const resolvedImageUrl = (mode === 'image-to-video' && imageUrl?.startsWith('http')) ? imageUrl : undefined;
+    if (mode === 'image-to-video' && !resolvedImageUrl) {
+      console.warn('[generate-video] Keine gueltige Remote-URL fuer Bild:', imageUrl?.slice(0, 80));
+    }
+
     // Script-Prompt ins Englische uebersetzen
     const maxChars = isVeo ? 900 : 300;
     const sysMsg = `You are an expert at writing KI video generation prompts.
@@ -26,22 +39,19 @@ Aspect ratio: ${aspectRatio || '9:16'}`;
     let taskId: string;
 
     if (isVeo) {
-      // ── Veo 3: eigener Endpoint ──
       const veoModel = model as 'veo3' | 'veo3_fast' | 'veo3_lite';
-      const imageUrls = (mode === 'image-to-video' && imageUrl) ? [imageUrl] : undefined;
+      const imageUrls = resolvedImageUrl ? [resolvedImageUrl] : undefined;
       taskId = await createVeoTask(finalPrompt, {
         model: veoModel,
         imageUrls,
-        aspectRatio: aspectRatio || '9:16',
+        aspectRatio: veoAspect,
       });
-    } else if (mode === 'image-to-video' && imageUrl) {
-      // ── Kling: Bild-zu-Video ──
+    } else if (mode === 'image-to-video' && resolvedImageUrl) {
       taskId = await createImageToVideoTask(
-        imageUrl, finalPrompt, duration || 5,
+        resolvedImageUrl, finalPrompt, duration || 5,
         model || 'kling-2.6/image-to-video'
       );
     } else {
-      // ── Kling: Text-zu-Video ──
       taskId = await createTextToVideoTask(
         finalPrompt, aspectRatio || '9:16', duration || 5,
         model || 'kling-2.6/text-to-video'

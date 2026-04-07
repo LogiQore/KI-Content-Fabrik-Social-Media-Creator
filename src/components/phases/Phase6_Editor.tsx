@@ -7,7 +7,7 @@ import Timeline from '@/components/editor/Timeline';
 import PropertiesPanel from '@/components/editor/PropertiesPanel';
 import ExportPanel from '@/components/editor/ExportPanel';
 
-interface Phase6Props { project: Project; items: ContentItem[]; onDone: () => void; }
+interface Phase6Props { project: Project; items: ContentItem[]; onDone: () => void; onBack?: () => void; }
 
 const FORMAT_PRESETS = [
   { label: '1:1 Feed', w: 1080, h: 1080 },
@@ -16,7 +16,7 @@ const FORMAT_PRESETS = [
   { label: '2:3 Pin', w: 1000, h: 1500 },
 ];
 
-export default function Phase6Editor({ project, items, onDone }: Phase6Props) {
+export default function Phase6Editor({ project, items, onDone, onBack }: Phase6Props) {
   const {
     editorProject, setEditorProject,
     selectedClipId, setSelectedClipId,
@@ -135,8 +135,9 @@ export default function Phase6Editor({ project, items, onDone }: Phase6Props) {
         </div>
       </div>
 
-      <div className="flex justify-end pt-2">
-        <button onClick={onDone} className="btn btn-primary px-8">
+      <div className="flex justify-between pt-2">
+        {onBack && <button onClick={onBack} className="btn btn-ghost px-4">← Zurück</button>}
+        <button onClick={onDone} className="btn btn-primary px-8 ml-auto">
           Weiter → Export & Download 📤
         </button>
       </div>
