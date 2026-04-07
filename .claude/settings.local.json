@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs cat:*)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//e/1_CLAUDE_Web_apps/KI_Content_Fabrik_Social_Media_Creator/**)",
+      "Bash(done)",
+      "WebSearch",
+      "WebFetch(domain:docs.kie.ai)",
+      "WebFetch(domain:kie.ai)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(gh auth:*)",
+      "Bash(rsync -av --exclude='node_modules' --exclude='tmp' --exclude='.next' --exclude='tsconfig.tsbuildinfo' . /tmp/Claude_code_clone/KI_Content_Fabrik_Social_Media_Creator/)",
+      "Bash(/tmp/Claude_code_clone/KI_Content_Fabrik_Social_Media_Creator/.gitignore:*)",
+      "Bash(gh repo:*)"
+    ]
+  }
+}
