@@ -339,7 +339,7 @@ KI_Content_Fabrik_Social_Media_Creator/
 
 ## Arbeitsstand / Aenderungsprotokoll
 
-### Session 6b (2026-04-07) — Aktuelle Session
+### Session 6c (2026-04-08) — Aktuelle Session
 
 **Phase 5 "Voice & Sprechtext" (komplett neu):**
 - Neue Phase zwischen Captions (4) und Videos (6) eingefuegt
@@ -351,12 +351,32 @@ KI_Content_Fabrik_Social_Media_Creator/
 - Batch-Audio-Generierung mit Fortschrittsbalken
 - Voice On/Off Toggle (Phase ueberspringbar)
 - Audio lokal gespeichert in `tmp/projects/{id}/audio/`
-- Neue Dateien: Phase5_Voice.tsx, elevenlabs.ts, did.ts, 3 API-Routen
-- Stepper.tsx und page.tsx auf 8 Phasen umnummeriert
-- ContentItem erweitert: sprechtext, voiceId, voiceProvider, voiceUrl, voiceLocalPath, voiceDuration
-- Neues Interface: VoiceOption (id, name, provider, previewUrl, language, category)
 
-**Status:** Implementiert, noch nicht live getestet. API-Keys eingetragen. Naechster Schritt: Durchlauf testen.
+**Stimmenauswahl & Presets:**
+- Eigene Stimme "Annett" (ElevenLabs ID: p9WPpO8nCwpUwzAG1TF7) prominent oben angezeigt
+- Scrollbare Stimmen-Liste mit Favoriten-Sternen (localStorage)
+- Voice-Settings Regler: Stabilitaet, Aehnlichkeit, Stil, Tempo
+- Stimmungs-Chips: dramatisch, warm, energisch, ruhig, provokant, geheimnisvoll + Freitext
+- "Stimmung probehoeren" Button: KI generiert Demo-Text → Audio in Echtzeit abspielen
+- Preset-System: Einstellungen speichern, laden, loeschen (localStorage, ueberlebt Neustarts)
+- Letztes Preset wird beim naechsten Besuch automatisch geladen
+
+**Hedra Lipsync-Integration:**
+- Neues Video-Modell: "Hedra Lipsync (Bild+Audio)" in Phase 6
+- Hedra API: Asset-Upload (Bild + Audio) → Character-Generation → Polling
+- Bei Hedra: Script-Felder ausgeblendet, eigener "Lipsync-Video generieren" Button
+- Gruen/Rot-Statusanzeige ob Audio vorhanden
+- Hedra lib: `src/lib/hedra.ts` (uploadImage, uploadAudio, createGeneration, getGenerationStatus)
+
+**Weitere Aenderungen:**
+- Voice-Over Toggle unabhaengig von Avatar-Auswahl (beides kombinierbar)
+- Audio-Proxy `/api/proxy-audio` fuer COEP-kompatibles Abspielen externer URLs
+- Voice-Info Box in Video-Phase: Sprechtext + Abspielen-Button pro Szene
+- Sprechtext + Audio-Pfade in beitrag.md und videoscript.md Exports
+- Bug behoben: Voice-Probehoeren blockiert durch COEP Header
+
+**Status:** Voice-Phase getestet und funktioniert (Stimmenauswahl, Audio-Generierung, Stimmung).
+Hedra Lipsync implementiert, noch nicht live getestet.
 
 ### Session 6 (2026-04-07)
 
@@ -420,22 +440,96 @@ KI_Content_Fabrik_Social_Media_Creator/
 - Script-Editor: 2 Felder (Handlung + Kamera)
 
 ### Offene Punkte / Naechste Schritte
-- **Phase 5 Voice testen:** Stimmen laden, Sprechtext generieren, Audio erstellen (erster Live-Test)
-- **D-ID Lipsync:** Sprechendes Avatar-Video mit D-ID Clips API (vorbereitet, noch nicht implementiert)
-- **Voice in Video integrieren:** Audio aus Phase 5 automatisch in Phase 6 (Videos) einbinden
+- **Hedra Lipsync live testen:** Bild + Audio → Hedra → sprechendes Video
 - Editor (Phase 7): Videos + Voice zu einem Gesamtvideo zusammenfuegen
 - Ggf. Veo 3 Extend-Video Feature nutzen fuer laengere Clips
-- Upload-Endpunkt bei kie.ai hat sich geaendert — `uploadFileBase64` ggf. aktualisieren
-
-### Testplan fuer naechste Session
-1. App starten (`npm run dev` oder `WebApp_starten.bat`)
-2. Projekt erstellen → Strategie → Bilder → Texte durchlaufen
-3. **Phase 5 (Voice):** Stimmen-Dropdown pruefen, Stimme auswaehlen, probehoeren
-4. **KI-Sprechtext:** "Alle Sprechtexte per KI" klicken, Texte pruefen/editieren
-5. **Audio generieren:** "Alle Audios generieren" klicken, Fortschritt pruefen
-6. **Abspielen:** Generierte Audios pro Szene anhoeren
-7. **Weiter:** "Weiter → Videos" klicken und pruefen ob Voice-Daten ankommen
 
 ---
 
-*Version: 5.0 — 2026-04-07 (Session 6b)*
+## NAECHSTE AUFGABE: Projekt-Explorer mit Resume-Funktion
+
+### Anforderung
+Wenn der Nutzer auf "Projekte" klickt, soll nicht nur eine einfache Liste der Projektnamen erscheinen, sondern ein **vollstaendiger Projekt-Explorer** mit Dateibrowser und der Moeglichkeit, an einer bestimmten Stelle weiterzuarbeiten.
+
+### Gewuenschtes Verhalten
+
+**1. Projekt-Uebersicht (Hauptebene)**
+```
+📂 Projekte
+├── 📋 Manipulation durch Fragen (07.04.2026)
+│   ├── 3 Berichte, 12 Bilder, 4 Audios, 3 Videos
+│   └── [Oeffnen] [Weiter bearbeiten ab: Phase 5 Voice]
+├── 📋 Oster-Kampagne (06.04.2026)
+│   ├── 1 Bericht, 3 Bilder, 0 Audios, 0 Videos
+│   └── [Oeffnen] [Weiter bearbeiten ab: Phase 3 Bilder]
+└── ...
+```
+
+**2. Bericht-Ebene (beim Aufklappen eines Projekts)**
+```
+📋 Manipulation durch Fragen
+├── 📄 01_beitrag_Manipulation.md
+│   ├── 🖼 Teil 1: Die harmlosen Fragen als Waffe
+│   │   ├── Bild: images/c6038c6b...png ✅
+│   │   ├── Audio: audio/voice_abc123.mp3 ✅
+│   │   ├── Video: videos/def456.mp4 ✅
+│   │   └── Caption: "Du hast heute mit..." ✅
+│   ├── 🖼 Teil 2: Bevor vs Nachher Erkenntnis
+│   │   ├── Bild: ✅  Audio: ✅  Video: ❌
+│   │   └── Caption: ✅
+│   └── ...
+├── 📄 02_beitrag_Manipulation.md
+│   └── ...
+└── 📄 01_videoscript_Manipulation.md
+```
+
+**3. Arbeitsstand-Erkennung**
+- Automatisch erkennen, bis zu welcher Phase Assets vorhanden sind:
+  - Nur project.json → Phase 1 (Projekt)
+  - Bilder vorhanden → Phase 3 abgeschlossen
+  - Captions in Items → Phase 4 abgeschlossen
+  - Audio-Dateien vorhanden → Phase 5 abgeschlossen
+  - Video-Dateien vorhanden → Phase 6 abgeschlossen
+- Farbliche Markierung: ✅ gruen (erledigt), ⏳ gelb (teilweise), ❌ rot (fehlt)
+
+**4. "Weiter bearbeiten" Resume-Funktion**
+- Button "Weiter bearbeiten" springt zur naechsten offenen Phase
+- ALLE bisherigen Daten muessen korrekt geladen werden:
+  - project.json → Projekt-Einstellungen (Avatar, Plattformen, Stil etc.)
+  - Vorhandene Bilder → in ContentItems als imageUrl/imageLocalPath
+  - Vorhandene Captions → in ContentItems als caption/hashtags
+  - Vorhandene Audios → in ContentItems als voiceUrl/voiceLocalPath/sprechtext
+  - Vorhandene Videos → in ContentItems als videoUrl/videoLocalPath
+- completedSteps korrekt setzen basierend auf vorhandenen Assets
+- Der Stepper zeigt die erledigten Phasen als gruen an
+
+**5. Datei-Aktionen (pro Asset)**
+- Bild/Video anklicken → Vorschau (Lightbox oder Inline)
+- Audio anklicken → Abspielen
+- 📂 "Im Explorer oeffnen" pro Datei
+- 📋 "Caption kopieren" Button
+
+### Technische Hinweise
+- Projektdaten liegen in `tmp/projects/{projectId}/`
+- `project.json` enthaelt Projekt-Settings + ggf. `contents[]` Array
+- Bilder: `tmp/projects/{id}/images/*.png|jpg`
+- Videos: `tmp/projects/{id}/videos/*.mp4`
+- Audios: `tmp/projects/{id}/audio/*.mp3`
+- Berichte: `tmp/projects/{id}/*_beitrag_*.md` und `*_videoscript_*.md`
+- Die Zuordnung Bild↔Szene erfolgt ueber die ContentItem-IDs im Dateinamen
+
+### Benoetigte Aenderungen
+1. **Neue API-Route: `/api/project-explorer`** — Projekt mit allen Assets + Arbeitsstand auslesen
+2. **Neues UI-Komponente: `ProjectExplorer.tsx`** — Baumansicht mit Aufklappen, Vorschau, Resume
+3. **page.tsx:** `loadProject()` erweitern um ContentItems mit Assets korrekt zu laden
+4. **project.ts (lib):** `loadProjectWithAssets()` — Projekt + alle zugehoerigen Dateien sammeln
+
+### Prioritaet
+Dies ist die naechste grosse Aufgabe. Sie ermoeglicht:
+- Ueberblick ueber alle erstellten Inhalte
+- Nahtloses Fortsetzen der Arbeit nach Unterbrechung
+- Keine doppelte Arbeit (Bilder nicht neu generieren wenn schon vorhanden)
+
+---
+
+*Version: 6.0 — 2026-04-08 (Session 6c)*
