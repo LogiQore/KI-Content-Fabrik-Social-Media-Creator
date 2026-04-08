@@ -2,7 +2,7 @@
 
 > Lokale Next.js Web-App zur KI-gestuetzten Erstellung von Social-Media-Content
 > Arbeitsverzeichnis: `E:\1_CLAUDE_Web_apps\KI_Content_Fabrik_Social_Media_Creator`
-> Erstellt: 2026-04-06 | Letzte Aktualisierung: 2026-04-07 (Session 6b)
+> Erstellt: 2026-04-06 | Letzte Aktualisierung: 2026-04-08 (Session 7)
 
 ---
 
@@ -28,6 +28,8 @@ fertigen, exportierbaren Bild/Video-Content fuer alle gaengigen Social-Media-Pla
 - Export: Einzel-Download + ZIP + Windows Explorer + fortlaufend nummerierte .md Dateien
 - Ausgabeformate aus social_media_formate.xlsx
 - Zurueck-Navigation in allen Phasen (Stepper + Buttons)
+- **Projekt-Explorer:** Baumansicht aller Projekte mit Berichten, Asset-Status, Resume-Funktion
+- **Resume-Funktion:** Arbeit an jedem Bericht nahtlos fortsetzen, alle Daten werden rekonstruiert
 - GitHub-Integration (eigenes Repository)
 
 ---
@@ -311,11 +313,13 @@ KI_Content_Fabrik_Social_Media_Creator/
     |       |-- export-md/             Beitrag-Markdown Export (fortlaufend nummeriert)
     |       |-- export-videoscript/    Videoscript-Markdown Export (fortlaufend nummeriert)
     |       |-- open-folder/           Windows Explorer oeffnen
+    |       |-- project-explorer/       Projekt-Explorer: Assets scannen, Phasen erkennen, Berichte parsen
     |       |-- avatare/               Avatar-Liste (mit auto-Komprimierung via sharp)
     |       |-- bildstile/             Bildstil-Liste
     |       |-- formats/               Plattform-Formate
     |-- components/
     |   |-- Stepper.tsx                (klickbar + Zurueck-Navigation)
+    |   |-- ProjectExplorer.tsx        Projekt-Explorer mit Baumansicht, Lightbox, Resume
     |   |-- phases/
     |   |   |-- Phase1_Setup.tsx ... Phase5_Voice.tsx ... Phase7_Export.tsx (alle mit onBack)
     |   |-- editor/
@@ -327,19 +331,77 @@ KI_Content_Fabrik_Social_Media_Creator/
     |   |-- claude.ts                  Claude via kie.ai (Anthropic-Endpoint)
     |   |-- elevenlabs.ts              ElevenLabs API (getVoices, textToSpeech)
     |   |-- did.ts                     D-ID API (getVoiceClones, getPresenters)
-    |   |-- project.ts                 Projekt-Datei-Operationen
+    |   |-- project.ts                 Projekt-Datei-Operationen + Asset-Scanning + Report-Parsing
     |-- hooks/
     |   |-- useKieTask.ts              React Hook: Task + Polling
     |   |-- useEditor.ts              Editor-Zustand
     |-- types/
-        |-- index.ts                   Alle TypeScript-Typen (inkl. imageRemoteUrl, VoiceOption)
+        |-- index.ts                   Alle TypeScript-Typen (inkl. ProjectExplorerData, ReportInfo)
 ```
 
 ---
 
 ## Arbeitsstand / Aenderungsprotokoll
 
-### Session 6c (2026-04-08) — Aktuelle Session
+### Session 7 (2026-04-08) — Aktuelle Session
+
+**Projekt-Explorer mit Resume-Funktion (komplett neu):**
+- Neuer Button "Projekte" im Header oeffnet vollstaendigen Projekt-Explorer
+- Ersetzt die alte einfache Projekt-Dropdown-Liste
+- Baumansicht aller Projekte mit Asset-Zaehlern (Bilder, Audios, Videos)
+- 8 farbige Phasen-Dots pro Projekt (gruen=done, gelb=partial, grau=missing)
+- Berichte (beitrag_*.md, videoscript_*.md) werden direkt angezeigt mit Sektionen
+- Pro Sektion: Status-Chips fuer Bild/Audio/Video/Text (klickbar fuer Vorschau/Abspielen/Kopieren)
+- Lightbox-Overlay fuer Bild- und Video-Vorschau
+- Inline Audio-Abspielen
+- Caption-Kopieren per Klick
+- "Im Explorer oeffnen" pro Datei und Projektordner
+
+**Resume-Funktion ("Weiter bearbeiten"):**
+- "Weiter bearbeiten ab Phase X" Button pro Bericht
+- ContentItems werden aus Bericht-MD-Dateien rekonstruiert:
+  - Bildpfade, Captions, Hashtags, Sprechtext, Audio-Pfade, Video-Pfade
+  - Vollstaendige ContentItem-Objekte mit korrekter Plattform, Format, Typ
+- Phasen-Erkennung: automatische Erkennung bis zu welcher Phase Assets vorhanden sind
+- completedSteps werden basierend auf vorhandenen Assets gesetzt
+- Stepper zeigt erledigte Phasen als gruen an
+- Ideas werden aus ContentItems rekonstruiert (Phase2→Phase3 Kompatibilitaet)
+
+**ContentItem-Persistierung (neu):**
+- Nach jeder Phase-Completion (Bilder, Captions, Voice, Videos) werden ContentItems
+  automatisch in `project.json` gespeichert (`project.contents[]`)
+- Neue Projekte haben ab sofort persistierte Contents
+- Alte Projekte: Contents werden aus Bericht-MD-Dateien rekonstruiert (Fallback)
+
+**Bild-Anzeige in allen Phasen (Bugfix):**
+- Phase 4 (Captions): Bilder werden jetzt auch bei `imageLocalPath` angezeigt (nicht nur `imageUrl`)
+- Phase 5 (Voice): Gleiches Fix — Bilder neben Sprechtext-Feldern sichtbar
+- Phase 6 (Videos): Gleiches Fix — Bild-Vorschau neben Video-Script
+- Phase 8 (Export): Bild + Video Vorschau und Download-Links fuer lokale Dateien
+
+**Neue/Geaenderte Dateien:**
+- `src/lib/project.ts` — +scanProjectAssets(), +detectProjectPhase(), +parseProjectReports(), +reconstructItemsFromReport()
+- `src/app/api/project-explorer/route.ts` — **NEU**: GET-Route fuer Explorer-Daten mit geparsten Berichten
+- `src/components/ProjectExplorer.tsx` — **NEU**: Explorer-Komponente mit Baumansicht, Lightbox, Resume
+- `src/app/page.tsx` — resumeProject() statt loadProject(), persistItems() nach jeder Phase
+- `src/types/index.ts` — +ProjectExplorerData, +ReportInfo, +ReportSection
+- `src/components/phases/Phase4_Captions.tsx` — Bild-Anzeige Fix (imageLocalPath)
+- `src/components/phases/Phase5_Voice.tsx` — Bild-Anzeige Fix (imageLocalPath)
+- `src/components/phases/Phase5_Video.tsx` — Bild-Anzeige Fix (imageLocalPath)
+- `src/components/phases/Phase7_Export.tsx` — Bild/Video-Anzeige + Download Fix (lokale Pfade)
+
+**API-Endpunkte:**
+- `GET /api/project-explorer` — Alle Projekte mit Assets, Phasen-Status, geparsten Berichten
+
+**Lib-Funktionen (project.ts):**
+- `scanProjectAssets(projectId)` — Dateisystem-Scan: images/, audio/, videos/, *.md
+- `detectProjectPhase(project, assets)` — Automatische Phasen-Erkennung (1-8)
+- `parseProjectReports(projectId)` — Bericht-MD-Dateien parsen, Sektionen + Items extrahieren
+- `reconstructItemsFromReport(projectId, filename)` — ContentItems aus MD rekonstruieren
+
+---
+
+### Session 6c (2026-04-08)
 
 **Phase 5 "Voice & Sprechtext" (komplett neu):**
 - Neue Phase zwischen Captions (4) und Videos (6) eingefuegt
@@ -446,96 +508,14 @@ KI_Content_Fabrik_Social_Media_Creator/
 - Veo 3 als Standard-Videomodell integriert
 - Script-Editor: 2 Felder (Handlung + Kamera)
 
-### Offene Punkte / Naechste Schritte
+---
+
+## Offene Punkte / Naechste Schritte
 - Editor (Phase 7): Videos + Voice zu einem Gesamtvideo zusammenfuegen
 - Ggf. Veo 3 Extend-Video Feature nutzen fuer laengere Clips
+- Projekt-Explorer: Berichte loeschen/umbenennen
+- Projekt-Explorer: Neuen Bericht innerhalb eines bestehenden Projekts starten
 
 ---
 
-## NAECHSTE AUFGABE: Projekt-Explorer mit Resume-Funktion
-
-### Anforderung
-Wenn der Nutzer auf "Projekte" klickt, soll nicht nur eine einfache Liste der Projektnamen erscheinen, sondern ein **vollstaendiger Projekt-Explorer** mit Dateibrowser und der Moeglichkeit, an einer bestimmten Stelle weiterzuarbeiten.
-
-### Gewuenschtes Verhalten
-
-**1. Projekt-Uebersicht (Hauptebene)**
-```
-📂 Projekte
-├── 📋 Manipulation durch Fragen (07.04.2026)
-│   ├── 3 Berichte, 12 Bilder, 4 Audios, 3 Videos
-│   └── [Oeffnen] [Weiter bearbeiten ab: Phase 5 Voice]
-├── 📋 Oster-Kampagne (06.04.2026)
-│   ├── 1 Bericht, 3 Bilder, 0 Audios, 0 Videos
-│   └── [Oeffnen] [Weiter bearbeiten ab: Phase 3 Bilder]
-└── ...
-```
-
-**2. Bericht-Ebene (beim Aufklappen eines Projekts)**
-```
-📋 Manipulation durch Fragen
-├── 📄 01_beitrag_Manipulation.md
-│   ├── 🖼 Teil 1: Die harmlosen Fragen als Waffe
-│   │   ├── Bild: images/c6038c6b...png ✅
-│   │   ├── Audio: audio/voice_abc123.mp3 ✅
-│   │   ├── Video: videos/def456.mp4 ✅
-│   │   └── Caption: "Du hast heute mit..." ✅
-│   ├── 🖼 Teil 2: Bevor vs Nachher Erkenntnis
-│   │   ├── Bild: ✅  Audio: ✅  Video: ❌
-│   │   └── Caption: ✅
-│   └── ...
-├── 📄 02_beitrag_Manipulation.md
-│   └── ...
-└── 📄 01_videoscript_Manipulation.md
-```
-
-**3. Arbeitsstand-Erkennung**
-- Automatisch erkennen, bis zu welcher Phase Assets vorhanden sind:
-  - Nur project.json → Phase 1 (Projekt)
-  - Bilder vorhanden → Phase 3 abgeschlossen
-  - Captions in Items → Phase 4 abgeschlossen
-  - Audio-Dateien vorhanden → Phase 5 abgeschlossen
-  - Video-Dateien vorhanden → Phase 6 abgeschlossen
-- Farbliche Markierung: ✅ gruen (erledigt), ⏳ gelb (teilweise), ❌ rot (fehlt)
-
-**4. "Weiter bearbeiten" Resume-Funktion**
-- Button "Weiter bearbeiten" springt zur naechsten offenen Phase
-- ALLE bisherigen Daten muessen korrekt geladen werden:
-  - project.json → Projekt-Einstellungen (Avatar, Plattformen, Stil etc.)
-  - Vorhandene Bilder → in ContentItems als imageUrl/imageLocalPath
-  - Vorhandene Captions → in ContentItems als caption/hashtags
-  - Vorhandene Audios → in ContentItems als voiceUrl/voiceLocalPath/sprechtext
-  - Vorhandene Videos → in ContentItems als videoUrl/videoLocalPath
-- completedSteps korrekt setzen basierend auf vorhandenen Assets
-- Der Stepper zeigt die erledigten Phasen als gruen an
-
-**5. Datei-Aktionen (pro Asset)**
-- Bild/Video anklicken → Vorschau (Lightbox oder Inline)
-- Audio anklicken → Abspielen
-- 📂 "Im Explorer oeffnen" pro Datei
-- 📋 "Caption kopieren" Button
-
-### Technische Hinweise
-- Projektdaten liegen in `tmp/projects/{projectId}/`
-- `project.json` enthaelt Projekt-Settings + ggf. `contents[]` Array
-- Bilder: `tmp/projects/{id}/images/*.png|jpg`
-- Videos: `tmp/projects/{id}/videos/*.mp4`
-- Audios: `tmp/projects/{id}/audio/*.mp3`
-- Berichte: `tmp/projects/{id}/*_beitrag_*.md` und `*_videoscript_*.md`
-- Die Zuordnung Bild↔Szene erfolgt ueber die ContentItem-IDs im Dateinamen
-
-### Benoetigte Aenderungen
-1. **Neue API-Route: `/api/project-explorer`** — Projekt mit allen Assets + Arbeitsstand auslesen
-2. **Neues UI-Komponente: `ProjectExplorer.tsx`** — Baumansicht mit Aufklappen, Vorschau, Resume
-3. **page.tsx:** `loadProject()` erweitern um ContentItems mit Assets korrekt zu laden
-4. **project.ts (lib):** `loadProjectWithAssets()` — Projekt + alle zugehoerigen Dateien sammeln
-
-### Prioritaet
-Dies ist die naechste grosse Aufgabe. Sie ermoeglicht:
-- Ueberblick ueber alle erstellten Inhalte
-- Nahtloses Fortsetzen der Arbeit nach Unterbrechung
-- Keine doppelte Arbeit (Bilder nicht neu generieren wenn schon vorhanden)
-
----
-
-*Version: 6.1 — 2026-04-08 (Session 6c — Hedra Lipsync getestet und funktionsfaehig)*
+*Version: 7.0 — 2026-04-08 (Session 7 — Projekt-Explorer mit Resume-Funktion)*

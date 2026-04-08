@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import type { Project, ContentItem, StrategyIdea } from '@/types';
 import Stepper from '@/components/Stepper';
+import ProjectExplorer from '@/components/ProjectExplorer';
 import Phase1Setup from '@/components/phases/Phase1_Setup';
 import Phase2Strategy from '@/components/phases/Phase2_Strategy';
 import Phase3Images from '@/components/phases/Phase3_Images';
@@ -50,23 +51,36 @@ export default function HomePage() {
     completeStep(2);
   };
 
+  // ContentItems in project.json persistieren
+  const persistItems = (proj: Project, contentItems: ContentItem[]) => {
+    fetch('/api/project', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update', project: { ...proj, contents: contentItems } }),
+    }).catch(() => {});
+  };
+
   const handleImagesDone = (newItems: ContentItem[]) => {
     setItems(newItems);
+    if (project) persistItems(project, newItems);
     completeStep(3);
   };
 
   const handleCaptionsDone = (newItems: ContentItem[]) => {
     setItems(newItems);
+    if (project) persistItems(project, newItems);
     completeStep(4);
   };
 
   const handleVoiceDone = (newItems: ContentItem[]) => {
     setItems(newItems);
+    if (project) persistItems(project, newItems);
     completeStep(5);
   };
 
   const handleVideosDone = (newItems: ContentItem[]) => {
     setItems(newItems);
+    if (project) persistItems(project, newItems);
     completeStep(6);
   };
 
@@ -77,9 +91,24 @@ export default function HomePage() {
     setIdeas([]); setItems([]); setShowProjectList(false);
   };
 
-  const loadProject = (p: Project) => {
-    setProject(p); setShowProjectList(false);
-    setCompletedSteps([1]); setCurrentStep(2);
+  const resumeProject = (proj: Project, contentItems: ContentItem[], completed: number[], targetStep: number) => {
+    setProject(proj);
+    setItems(contentItems);
+    setCompletedSteps(completed);
+    setCurrentStep(targetStep);
+    setShowProjectList(false);
+    // Ideas aus ContentItems rekonstruieren fuer Phase2->Phase3 Kompatibilitaet
+    const reconstructedIdeas: StrategyIdea[] = contentItems.map(item => ({
+      id: item.id,
+      type: item.type,
+      title: item.title,
+      description: item.description,
+      platform: item.platform,
+      aspectRatio: item.aspectRatio,
+      hashtagSuggestions: item.hashtags || [],
+      active: item.active !== false,
+    }));
+    setIdeas(reconstructedIdeas);
   };
 
   return (
@@ -110,33 +139,13 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Projekt-Liste Dropdown */}
+      {/* Projekt-Explorer */}
       {showProjectList && (
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="card">
-            <h3 className="font-semibold text-sm mb-3">📂 Gespeicherte Projekte</h3>
-            {projects.length === 0
-              ? <p className="text-sm text-[#94a3b8]">Noch keine Projekte vorhanden.</p>
-              : <div className="space-y-2">
-                  {projects.map(p => (
-                    <div key={p.id} className="flex items-center justify-between p-3 bg-[#0f0f1a] rounded-lg">
-                      <div>
-                        <p className="font-semibold text-sm">{p.name}</p>
-                        <p className="text-xs text-[#94a3b8]">{new Date(p.createdAt).toLocaleDateString('de-DE')} · {p.platforms.join(', ')}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => loadProject(p)} className="btn btn-primary btn-sm text-xs">Öffnen</button>
-                        <button onClick={async () => {
-                          await fetch('/api/project', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', id: p.id }) });
-                          setProjects(prev => prev.filter(x => x.id !== p.id));
-                        }} className="btn btn-danger btn-sm text-xs">🗑</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-            }
-          </div>
-        </div>
+        <ProjectExplorer
+          onClose={() => setShowProjectList(false)}
+          onResumeProject={resumeProject}
+          onDeleteProject={(id) => setProjects(prev => prev.filter(x => x.id !== id))}
+        />
       )}
 
       {/* Stepper */}

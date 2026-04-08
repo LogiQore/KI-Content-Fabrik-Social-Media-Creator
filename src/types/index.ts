@@ -117,3 +117,43 @@ export interface Bildstil {
 export interface Avatar {
   name: string; fileName: string; path: string; publicUrl: string;
 }
+
+// ─── Projekt-Explorer ────────────────────────────────────────────────────────
+
+export interface ReportSection {
+  number: number;
+  title: string;
+  hasImage: boolean;
+  hasAudio: boolean;
+  hasVideo: boolean;
+  hasCaption: boolean;
+}
+
+export interface ReportInfo {
+  filename: string;
+  type: 'beitrag' | 'videoscript';
+  sections: ReportSection[];
+  items: ContentItem[];
+}
+
+export interface ProjectExplorerData {
+  project: Project;
+  assets: {
+    images: string[];
+    audios: string[];
+    videos: string[];
+    reports: string[];
+  };
+  counts: {
+    images: number;
+    audios: number;
+    videos: number;
+    reports: number;
+  };
+  phase: {
+    completed: number[];
+    nextPhase: number;
+    status: Record<number, 'done' | 'partial' | 'missing'>;
+  };
+  reportDetails: ReportInfo[];
+}

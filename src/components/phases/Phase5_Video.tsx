@@ -283,8 +283,12 @@ export default function Phase5Video({ project, items: init, onDone, onBack }: Ph
             <div key={item.id} className="card space-y-3">
               {/* Header */}
               <div className="flex items-start gap-3 flex-wrap">
-                {item.imageUrl && (
-                  <img src={item.imageUrl} alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+                {(item.imageUrl || item.imageLocalPath) && (
+                  <img
+                    src={item.imageLocalPath
+                      ? `/api/serve-asset?path=${encodeURIComponent(item.imageLocalPath)}`
+                      : item.imageUrl!}
+                    alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">

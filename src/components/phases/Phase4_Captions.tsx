@@ -132,9 +132,13 @@ export default function Phase4Captions({ project, items: initialItems, onDone, o
               </div>
 
               {/* Bild-Vorschau + Pfad */}
-              {item.imageUrl && (
+              {(item.imageUrl || item.imageLocalPath) && (
                 <div className="flex items-center gap-3">
-                  <img src={item.imageUrl} alt="" className="w-20 h-20 rounded-lg object-cover flex-shrink-0" />
+                  <img
+                    src={item.imageLocalPath
+                      ? `/api/serve-asset?path=${encodeURIComponent(item.imageLocalPath)}`
+                      : item.imageUrl!}
+                    alt="" className="w-20 h-20 rounded-lg object-cover flex-shrink-0" />
                   {item.imageLocalPath && (
                     <button
                       onClick={() =>

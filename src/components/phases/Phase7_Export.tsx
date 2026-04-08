@@ -85,11 +85,19 @@ export default function Phase7Export({ project, items, onRestart, onBack }: Phas
               {/* Bild / Video + Titel */}
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 space-y-1">
-                  {item.imageUrl && (
-                    <img src={item.imageUrl} alt="" className="w-24 h-24 rounded-lg object-cover" />
+                  {(item.imageUrl || item.imageLocalPath) && (
+                    <img
+                      src={item.imageLocalPath
+                        ? `/api/serve-asset?path=${encodeURIComponent(item.imageLocalPath)}`
+                        : item.imageUrl!}
+                      alt="" className="w-24 h-24 rounded-lg object-cover" />
                   )}
-                  {item.videoUrl && (
-                    <video src={item.videoUrl} className="w-24 h-24 rounded-lg object-cover" controls />
+                  {(item.videoUrl || item.videoLocalPath) && (
+                    <video
+                      src={item.videoLocalPath
+                        ? `/api/serve-asset?path=${encodeURIComponent(item.videoLocalPath)}`
+                        : item.videoUrl!}
+                      className="w-24 h-24 rounded-lg object-cover" controls />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -163,11 +171,17 @@ export default function Phase7Export({ project, items, onRestart, onBack }: Phas
                     {copied === item.id + '_all' ? '✓ Kopiert!' : '📋 Alles kopieren'}
                   </button>
                 )}
-                {item.imageUrl && (
-                  <a href={item.imageUrl} download className="btn btn-ghost btn-sm text-xs">⬇ Bild</a>
+                {(item.imageUrl || item.imageLocalPath) && (
+                  <a href={item.imageLocalPath
+                    ? `/api/serve-asset?path=${encodeURIComponent(item.imageLocalPath)}`
+                    : item.imageUrl!}
+                    download className="btn btn-ghost btn-sm text-xs">⬇ Bild</a>
                 )}
-                {item.videoUrl && (
-                  <a href={item.videoUrl} download className="btn btn-ghost btn-sm text-xs">⬇ Video</a>
+                {(item.videoUrl || item.videoLocalPath) && (
+                  <a href={item.videoLocalPath
+                    ? `/api/serve-asset?path=${encodeURIComponent(item.videoLocalPath)}`
+                    : item.videoUrl!}
+                    download className="btn btn-ghost btn-sm text-xs">⬇ Video</a>
                 )}
               </div>
             </div>
