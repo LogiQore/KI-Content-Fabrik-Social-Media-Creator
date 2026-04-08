@@ -29,7 +29,8 @@
       "WebFetch(domain:docs.hedra.com)",
       "WebFetch(domain:www.hedra.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)"
     ]
   }
 }

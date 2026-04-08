@@ -64,17 +64,19 @@ export async function createGeneration(opts: {
     '4:5': '9:16', '2:3': '9:16',
   };
 
-  const body = {
+  const body: Record<string, unknown> = {
     type: 'video',
-    ai_model_id: opts.modelId || 'd1dd37a3',
+    ai_model_id: opts.modelId || 'd1dd37a3-e39a-4854-a298-6510289f9cf2',
     start_keyframe_id: opts.imageAssetId,
-    audio_id: opts.audioAssetId,
     generated_video_inputs: {
       text_prompt: opts.textPrompt || '',
       aspect_ratio: ratioMap[opts.aspectRatio || '9:16'] || '9:16',
       resolution: '720p',
     },
   };
+  if (opts.audioAssetId) {
+    body.audio_id = opts.audioAssetId;
+  }
 
   const res = await fetch(`${BASE}/generations`, {
     method: 'POST',

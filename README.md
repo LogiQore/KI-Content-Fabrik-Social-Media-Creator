@@ -375,8 +375,15 @@ KI_Content_Fabrik_Social_Media_Creator/
 - Sprechtext + Audio-Pfade in beitrag.md und videoscript.md Exports
 - Bug behoben: Voice-Probehoeren blockiert durch COEP Header
 
-**Status:** Voice-Phase getestet und funktioniert (Stimmenauswahl, Audio-Generierung, Stimmung).
-Hedra Lipsync implementiert, noch nicht live getestet.
+**Hedra API Bugfixes (live getestet):**
+- Body-Struktur korrigiert: Felder liegen flach (nicht unter `video`-Wrapper)
+- Volle UUID fuer ai_model_id: `d1dd37a3-e39a-4854-a298-6510289f9cf2`
+- Asset-Upload (Bild + Audio) → Generation → Polling → Video-Download funktioniert
+
+**Status:** ✅ Komplett getestet und funktionsfaehig:
+- Voice-Phase: Stimmenauswahl, Stimmung, Audio-Generierung ✅
+- Hedra Lipsync: Bild + Audio → sprechendes Video mit Lippenbewegung ✅
+- Veo 3: Prompt-basierte Videogenerierung ✅
 
 ### Session 6 (2026-04-07)
 
@@ -440,7 +447,6 @@ Hedra Lipsync implementiert, noch nicht live getestet.
 - Script-Editor: 2 Felder (Handlung + Kamera)
 
 ### Offene Punkte / Naechste Schritte
-- **Hedra Lipsync live testen:** Bild + Audio → Hedra → sprechendes Video
 - Editor (Phase 7): Videos + Voice zu einem Gesamtvideo zusammenfuegen
 - Ggf. Veo 3 Extend-Video Feature nutzen fuer laengere Clips
 
@@ -532,4 +538,4 @@ Dies ist die naechste grosse Aufgabe. Sie ermoeglicht:
 
 ---
 
-*Version: 6.0 — 2026-04-08 (Session 6c)*
+*Version: 6.1 — 2026-04-08 (Session 6c — Hedra Lipsync getestet und funktionsfaehig)*
