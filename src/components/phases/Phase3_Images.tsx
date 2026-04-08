@@ -104,6 +104,7 @@ export default function Phase3Images({ project, ideas, onDone, onBack }: Phase3P
           avatarPath: project.avatarPath,
           avatarName: project.avatarName,
           avatarDescription: desc,
+          voiceOverMode: project.voiceOverMode,
           model,
         }),
       });

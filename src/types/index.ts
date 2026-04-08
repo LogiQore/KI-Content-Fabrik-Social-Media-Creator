@@ -17,7 +17,7 @@ export interface Project {
   id: string; name: string; platforms: Platform[]; audience: string; theme: string;
   brandColors: string[]; brandFont: string; toneOfVoice: string; userInstructions: string;
   logoPath?: string; bildstilId?: string; bildstilPrompt?: string;
-  avatarPath?: string; avatarName?: string;
+  avatarPath?: string; avatarName?: string; voiceOverMode?: boolean;
   createdAt: string; updatedAt: string; contents: ContentItem[];
 }
 
@@ -28,10 +28,27 @@ export interface ContentItem {
   videoPrompt?: string; videoUrl?: string; videoLocalPath?: string;
   videoMode?: 'none' | 'image-to-video' | 'text-to-video';
   caption?: string; hashtags?: string[];
+  // Voice / Sprechtext
+  sprechtext?: string;
+  voiceId?: string;
+  voiceProvider?: 'elevenlabs' | 'did';
+  voiceUrl?: string;
+  voiceLocalPath?: string;
+  voiceDuration?: number;
+  // Tasks
   imageTaskId?: string; videoTaskId?: string; musicTaskId?: string;
   status?: 'idle' | 'generating' | 'done' | 'error'; errorMsg?: string;
   // Script-Referenz
   sceneNumber?: number;
+}
+
+export interface VoiceOption {
+  id: string;
+  name: string;
+  provider: 'elevenlabs' | 'did';
+  previewUrl?: string;
+  language?: string;
+  category?: string;
 }
 
 // ─── Virales Script (neue Strategie-Struktur) ────────────────────────────────

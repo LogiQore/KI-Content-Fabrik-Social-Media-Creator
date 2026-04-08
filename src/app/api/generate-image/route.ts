@@ -7,7 +7,7 @@ import fs from 'fs';
 export async function POST(req: NextRequest) {
   const { contentTitle, contentDescription, platform, aspectRatio,
           brandStyle, userInstructions, bildstilPrompt, avatarPath, avatarName,
-          avatarDescription, model } = await req.json();
+          avatarDescription, voiceOverMode, model } = await req.json();
 
   try {
     const isNanoBanana = model === 'nano-banana-2';
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
     // ── Avatar-Bild hochladen (komprimierte Version aus .cache) ──
     let avatarUrl: string | undefined;
-    if (avatarPath && avatarPath !== 'voice-over' && fs.existsSync(avatarPath)) {
+    if (avatarPath && fs.existsSync(avatarPath)) {
       try {
         const { uploadFileBase64 } = await import('@/lib/kie-ai');
         const imgData = fs.readFileSync(avatarPath);
@@ -33,10 +33,12 @@ export async function POST(req: NextRequest) {
     // ── Avatar-Hint fuer den Prompt aufbauen ──
     const styleHint  = bildstilPrompt ? `\nImage style: ${bildstilPrompt}` : '';
 
+    const voiceOverHint = voiceOverMode
+      ? '\nIMPORTANT: The character must be looking directly into the camera, engaging eye contact, as if speaking to the viewer. Close-up or medium shot, voice-over presentation style.'
+      : '';
+
     let avatarHint = '';
-    if (avatarPath === 'voice-over') {
-      avatarHint = '\nIMPORTANT: Show a person speaking directly into camera, voice-over style, close-up, engaging eye contact.';
-    } else if (avatarName && avatarDescription) {
+    if (avatarName && avatarDescription) {
       // Beste Variante: Wir haben eine detaillierte Beschreibung vom Avatar
       avatarHint = `\n\nCRITICAL CHARACTER REQUIREMENTS:
 The main character is "${avatarName}". You MUST include this EXACT character description in your prompt:
@@ -61,7 +63,7 @@ CRITICAL RULES:
 - ONE single image only — NO split-screen, NO collage, NO multi-panel, NO grid, NO side-by-side.
 - ABSOLUTELY NO TEXT in the image — no words, no letters, no titles, no captions, no speech bubbles, no signs with text, no watermarks, no typography, no quotes, no subtitles. The image must be purely visual with ZERO text elements.
 - When a character description is provided, you MUST start the prompt with the full character description verbatim, then describe the scene around that character.
-- NEVER simplify, shorten, or paraphrase the character description.${styleHint}${avatarHint}`;
+- NEVER simplify, shorten, or paraphrase the character description.${styleHint}${avatarHint}${voiceOverHint}`;
 
     const promptUserMsg = `Create an image prompt for: ${contentTitle}. ${contentDescription}. Platform: ${platform}. Aspect: ${aspectRatio}.${bildstilPrompt ? ` Style: ${bildstilPrompt}.` : ''}${userInstructions ? ` Extra: ${userInstructions}` : ''}`;
 

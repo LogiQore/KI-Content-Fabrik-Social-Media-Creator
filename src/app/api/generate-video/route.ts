@@ -1,27 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { claudeChat } from '@/lib/claude';
 import { createImageToVideoTask, createTextToVideoTask, createVeoTask } from '@/lib/kie-ai';
+import { uploadImage as hedraUploadImage, uploadAudio as hedraUploadAudio, createGeneration as hedraCreateGeneration } from '@/lib/hedra';
+import fs from 'fs';
+import path from 'path';
 
 export async function POST(req: NextRequest) {
-  const { mode, imageUrl, contentTitle, contentDescription, aspectRatio, duration, model } = await req.json();
+  const { mode, imageUrl, contentTitle, contentDescription, aspectRatio, duration, model,
+          voiceLocalPath, imageLocalPath } = await req.json();
 
   const isVeo = model?.startsWith('veo3');
+  const isHedra = model === 'hedra/lipsync';
 
-  // Veo 3 unterstuetzt nur 16:9, 9:16 und Auto
-  const veoRatioMap: Record<string, string> = {
-    '9:16': '9:16', '16:9': '16:9',
-    '1:1': '9:16', '4:5': '9:16', '2:3': '9:16',
+  // Aspect-Ratio Mapping (Veo + Hedra: nur 9:16, 16:9, 1:1)
+  const ratioMap: Record<string, string> = {
+    '9:16': '9:16', '16:9': '16:9', '1:1': '1:1',
+    '4:5': '9:16', '2:3': '9:16',
   };
-  const veoAspect = isVeo ? (veoRatioMap[aspectRatio] || '9:16') : aspectRatio;
 
   try {
-    // imageUrl sollte jetzt eine Remote-URL (https://...) sein
+    let taskId: string;
+
+    if (isHedra) {
+      // ── Hedra Lipsync: Bild + Audio → sprechendes Video ──
+      // Lokale Dateien lesen und zu Hedra hochladen
+      const imgPath = imageLocalPath;
+      const audioPath = voiceLocalPath;
+
+      if (!imgPath || !fs.existsSync(imgPath)) {
+        throw new Error('Kein Bild vorhanden fuer Hedra Lipsync');
+      }
+      if (!audioPath || !fs.existsSync(audioPath)) {
+        throw new Error('Kein Audio vorhanden fuer Hedra Lipsync. Bitte zuerst in Phase 5 (Voice) Audio generieren.');
+      }
+
+      console.log('[generate-video] Hedra: Lade Bild hoch...', imgPath);
+      const imgBuffer = fs.readFileSync(imgPath);
+      const imageAssetId = await hedraUploadImage(imgBuffer, path.basename(imgPath));
+
+      console.log('[generate-video] Hedra: Lade Audio hoch...', audioPath);
+      const audioBuffer = fs.readFileSync(audioPath);
+      const audioAssetId = await hedraUploadAudio(audioBuffer, path.basename(audioPath));
+
+      console.log('[generate-video] Hedra: Erstelle Lipsync-Video...');
+      taskId = await hedraCreateGeneration({
+        imageAssetId,
+        audioAssetId,
+        textPrompt: contentTitle,
+        aspectRatio: ratioMap[aspectRatio] || '9:16',
+      });
+
+      return NextResponse.json({ taskId, isHedra: true });
+    }
+
+    // ── Veo / Kling: Prompt-basierte Videogenerierung ──
     const resolvedImageUrl = (mode === 'image-to-video' && imageUrl?.startsWith('http')) ? imageUrl : undefined;
     if (mode === 'image-to-video' && !resolvedImageUrl) {
       console.warn('[generate-video] Keine gueltige Remote-URL fuer Bild:', imageUrl?.slice(0, 80));
     }
 
-    // Script-Prompt ins Englische uebersetzen
     const maxChars = isVeo ? 900 : 300;
     const sysMsg = `You are an expert at writing KI video generation prompts.
 Translate and enhance the following German video script into a concise, vivid English prompt.
@@ -36,7 +73,7 @@ Aspect ratio: ${aspectRatio || '9:16'}`;
     const videoPrompt = await claudeChat(sysMsg, userMsg);
     const finalPrompt = videoPrompt.trim().slice(0, maxChars);
 
-    let taskId: string;
+    const veoAspect = isVeo ? (ratioMap[aspectRatio] || '9:16') : aspectRatio;
 
     if (isVeo) {
       const veoModel = model as 'veo3' | 'veo3_fast' | 'veo3_lite';

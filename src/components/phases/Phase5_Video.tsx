@@ -1,12 +1,13 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Project, ContentItem } from '@/types';
 import KieTaskProgress from '@/components/ui/KieTaskProgress';
 import PlatformBadge from '@/components/ui/PlatformBadge';
 
-type VideoMode = 'none' | 'image-to-video' | 'text-to-video';
+type VideoMode = 'none' | 'image-to-video' | 'text-to-video' | 'lipsync';
 
 const VIDEO_MODELS = [
+  { value: 'hedra/lipsync',            label: '🎤 Hedra Lipsync (Bild+Audio)', mode: 'lipsync' as const, duration: 0, durationFixed: true },
   { value: 'veo3_fast',                label: 'Veo 3 Fast (empfohlen)',   mode: 'image-to-video' as const, duration: 8, durationFixed: true },
   { value: 'veo3',                     label: 'Veo 3 Quality',           mode: 'image-to-video' as const, duration: 8, durationFixed: true },
   { value: 'veo3_lite',                label: 'Veo 3 Lite (Budget)',     mode: 'image-to-video' as const, duration: 8, durationFixed: true },
@@ -24,7 +25,7 @@ interface ItemState {
   scriptLoading: boolean;
   taskId?: string; taskState: string; progress: number;
   videoUrl?: string; errorMsg?: string;
-  isVeo: boolean;
+  isVeo: boolean; isHedra: boolean;
 }
 
 interface Phase5Props { project: Project; items: ContentItem[]; onDone: (items: ContentItem[]) => void; onBack?: () => void; }
@@ -47,7 +48,7 @@ export default function Phase5Video({ project, items: init, onDone, onBack }: Ph
       script: { ...EMPTY_SCRIPT },
       scriptLoading: false,
       taskState: 'idle', progress: 0,
-      isVeo: true,
+      isVeo: false, isHedra: false,
     }]))
   );
 
@@ -57,15 +58,16 @@ export default function Phase5Video({ project, items: init, onDone, onBack }: Ph
   const updScript = (id: string, field: keyof VideoScript, val: string) =>
     setStates(prev => ({ ...prev, [id]: { ...prev[id], script: { ...prev[id].script, [field]: val } } }));
 
-  const setModel = (id: string, modelValue: string) => {
+  const setModel = (id: string, modelValue: string, item?: ContentItem) => {
     const m = VIDEO_MODELS.find(v => v.value === modelValue);
     if (!m) return;
     const isVeo = modelValue.startsWith('veo3');
+    const isHedra = modelValue === 'hedra/lipsync';
     upd(id, {
       model: modelValue,
       mode: m.mode,
-      duration: m.duration,
-      isVeo,
+      duration: isHedra ? (item?.voiceDuration || 8) : m.duration,
+      isVeo, isHedra,
     });
   };
 
@@ -94,12 +96,12 @@ export default function Phase5Video({ project, items: init, onDone, onBack }: Ph
     } catch (e) { upd(item.id, { scriptLoading: false, errorMsg: String(e) }); }
   };
 
-  const startPolling = useCallback((id: string, taskId: string, isVeo: boolean) => {
+  const startPolling = useCallback((id: string, taskId: string, isVeo: boolean, isHedra?: boolean) => {
     const t0 = Date.now();
     const iv = setInterval(async () => {
       try {
-        const veoParam = isVeo ? '&veo=1' : '';
-        const r = await fetch(`/api/poll-task?taskId=${taskId}${veoParam}`);
+        const extraParam = isHedra ? '&hedra=1' : isVeo ? '&veo=1' : '';
+        const r = await fetch(`/api/poll-task?taskId=${taskId}${extraParam}`);
         const d = await r.json();
         const prog = Math.min(95, Math.round((Date.now() - t0) / 1800));
         if (d.state === 'success' && d.resultUrls?.[0]) {
@@ -124,28 +126,38 @@ export default function Phase5Video({ project, items: init, onDone, onBack }: Ph
 
   const startVideo = async (item: ContentItem) => {
     const st = states[item.id];
+
+    // Hedra: Pruefen ob Audio vorhanden
+    if (st.isHedra && !item.voiceLocalPath) {
+      upd(item.id, { taskState: 'fail', errorMsg: 'Hedra Lipsync benoetigt Voice-Over Audio aus Phase 5. Bitte zurueck zu Voice gehen.' });
+      return;
+    }
+
     upd(item.id, { taskState: 'waiting', progress: 5, errorMsg: undefined });
     try {
-      const promptText = buildPrompt(st.script, item.title)
-        + '. No text, no captions, no subtitles, no watermarks, no written words of any kind.';
+      const promptText = st.isHedra ? '' : (buildPrompt(st.script, item.title)
+        + '. No text, no captions, no subtitles, no watermarks, no written words of any kind.');
 
       const res = await fetch('/api/generate-video', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode: st.mode,
           imageUrl: item.imageRemoteUrl || item.imageUrl,
+          imageLocalPath: item.imageLocalPath,
           contentTitle: item.title,
           contentDescription: promptText,
           aspectRatio: item.aspectRatio,
-          duration: st.duration,
+          duration: st.isHedra ? (item.voiceDuration || 8) : st.duration,
           model: st.model,
+          voiceLocalPath: item.voiceLocalPath,
         }),
       });
       const data = await res.json();
       if (data.taskId) {
         const isVeo = data.isVeo || st.isVeo;
-        upd(item.id, { taskId: data.taskId, taskState: 'queuing', progress: 10, isVeo });
-        startPolling(item.id, data.taskId, isVeo);
+        const isHedra = data.isHedra || st.isHedra;
+        upd(item.id, { taskId: data.taskId, taskState: 'queuing', progress: 10, isVeo, isHedra });
+        startPolling(item.id, data.taskId, isVeo, isHedra);
       } else throw new Error(data.error || 'Kein taskId');
     } catch (e) { upd(item.id, { taskState: 'fail', errorMsg: String(e) }); }
   };
@@ -179,6 +191,17 @@ export default function Phase5Video({ project, items: init, onDone, onBack }: Ph
   };
 
   const [mdPath, setMdPath] = useState('');
+  const [playingAudio, setPlayingAudio] = useState('');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playAudio = (url: string, id: string) => {
+    if (audioRef.current) audioRef.current.pause();
+    if (playingAudio === id) { setPlayingAudio(''); return; }
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    setPlayingAudio(id);
+    audio.play().catch(e => console.error(e));
+    audio.onended = () => setPlayingAudio('');
+  };
   const exportVideoScript = async () => {
     const scripts = items.map(item => {
       const st = states[item.id];
@@ -188,6 +211,7 @@ export default function Phase5Video({ project, items: init, onDone, onBack }: Ph
         caption: item.caption, imageLocalPath: item.imageLocalPath,
         script: st.script, model: st.model, duration: st.duration,
         videoLocalPath: item.videoLocalPath,
+        sprechtext: item.sprechtext, voiceLocalPath: item.voiceLocalPath,
       };
     });
     try {
@@ -270,7 +294,7 @@ export default function Phase5Video({ project, items: init, onDone, onBack }: Ph
 
                   {/* Modell + Dauer Zeile */}
                   <div className="flex items-center gap-3 flex-wrap">
-                    <select value={st.model} onChange={e => setModel(item.id, e.target.value)}
+                    <select value={st.model} onChange={e => setModel(item.id, e.target.value, item)}
                       className="text-xs w-52">
                       {VIDEO_MODELS.map(m => (
                         <option key={m.value} value={m.value}>{m.label}</option>
@@ -301,8 +325,67 @@ export default function Phase5Video({ project, items: init, onDone, onBack }: Ph
                 )}
               </div>
 
+              {/* Voice-Over Info */}
+              {(item.sprechtext || item.voiceUrl) && (
+                <div className="bg-blue-900/15 border border-blue-700/30 rounded-lg px-3 py-2 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-blue-300">🎤 Voice-Over</span>
+                    {item.voiceUrl && (
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => playAudio(item.voiceUrl!, `voice-${item.id}`)}
+                          className="btn btn-ghost btn-sm text-xs">
+                          {playingAudio === `voice-${item.id}` ? '⏹ Stopp' : '▶ Abspielen'}
+                        </button>
+                        {item.voiceDuration && (
+                          <span className="text-xs text-green-400">✅ {item.voiceDuration}s</span>
+                        )}
+                      </div>
+                    )}
+                    {!item.voiceUrl && item.sprechtext && (
+                      <span className="text-xs text-yellow-400">⚠ Kein Audio generiert</span>
+                    )}
+                  </div>
+                  {item.sprechtext && (
+                    <p className="text-xs text-[#94a3b8] italic">"{item.sprechtext}"</p>
+                  )}
+                </div>
+              )}
+
               {/* Script-Editor: 2 Felder */}
-              {st.mode !== 'none' && (
+              {/* Hedra Lipsync: Kein Script noetig, aber Audio erforderlich */}
+              {st.isHedra && (
+                <div className={`border rounded-xl px-4 py-3 ${item.voiceLocalPath ? 'border-green-700/40 bg-green-900/10' : 'border-red-700/40 bg-red-900/10'}`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{item.voiceLocalPath ? '✅' : '⚠️'}</span>
+                    <div>
+                      <p className="text-sm font-semibold text-[#f1f5f9]">
+                        {item.voiceLocalPath ? 'Hedra Lipsync bereit' : 'Audio fehlt fuer Hedra Lipsync'}
+                      </p>
+                      <p className="text-xs text-[#94a3b8]">
+                        {item.voiceLocalPath
+                          ? `Bild + Audio → sprechendes Video (~${item.voiceDuration || '?'}s)`
+                          : 'Bitte zurueck zu Phase 5 (Voice) und Audio generieren'}
+                      </p>
+                    </div>
+                  </div>
+                  {item.voiceLocalPath && (
+                    <button onClick={() => startVideo(item)}
+                      disabled={isRunning}
+                      className="btn btn-primary w-full mt-3">
+                      {isRunning ? '⏳ Lipsync wird generiert...' : '🎤 Lipsync-Video generieren'}
+                    </button>
+                  )}
+                  {(isRunning || st.taskState === 'fail') && (
+                    <div className="mt-2">
+                      <KieTaskProgress state={st.taskState} progress={st.progress}
+                        taskId={st.taskId} model={st.model} errorMsg={st.errorMsg}
+                        onRetry={() => startVideo(item)} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {st.mode !== 'none' && !st.isHedra && (
                 <div className="border border-[#2d2d44] rounded-xl overflow-hidden">
                   {/* Toolbar */}
                   <div className="flex items-center justify-between px-4 py-2 bg-[#0f0f1a]">

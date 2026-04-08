@@ -13,6 +13,8 @@ interface ScriptItem {
   script: { action: string; camera: string };
   model: string;
   duration: number;
+  sprechtext?: string;
+  voiceLocalPath?: string;
   videoLocalPath?: string;
 }
 
@@ -46,6 +48,13 @@ export async function POST(req: NextRequest) {
 
     if (s.script.camera) {
       md += `### 🎥 Kamera & Perspektive\n\n${s.script.camera}\n\n`;
+    }
+
+    if (s.sprechtext) {
+      md += `### 🎤 Sprechtext\n\n${s.sprechtext}\n\n`;
+    }
+    if (s.voiceLocalPath) {
+      md += `**Voice-Over (Audio):**  \n\`${s.voiceLocalPath}\`\n\n`;
     }
 
     if (s.caption) {

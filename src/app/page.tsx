@@ -6,9 +6,10 @@ import Phase1Setup from '@/components/phases/Phase1_Setup';
 import Phase2Strategy from '@/components/phases/Phase2_Strategy';
 import Phase3Images from '@/components/phases/Phase3_Images';
 import Phase4Captions from '@/components/phases/Phase4_Captions';
-import Phase5Video from '@/components/phases/Phase5_Video';
-import Phase6Editor from '@/components/phases/Phase6_Editor';
-import Phase7Export from '@/components/phases/Phase7_Export';
+import Phase5Voice from '@/components/phases/Phase5_Voice';
+import Phase6Video from '@/components/phases/Phase5_Video';
+import Phase7Editor from '@/components/phases/Phase6_Editor';
+import Phase8Export from '@/components/phases/Phase7_Export';
 
 export default function HomePage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -59,12 +60,17 @@ export default function HomePage() {
     completeStep(4);
   };
 
-  const handleVideosDone = (newItems: ContentItem[]) => {
+  const handleVoiceDone = (newItems: ContentItem[]) => {
     setItems(newItems);
     completeStep(5);
   };
 
-  const handleEditorDone = () => completeStep(6);
+  const handleVideosDone = (newItems: ContentItem[]) => {
+    setItems(newItems);
+    completeStep(6);
+  };
+
+  const handleEditorDone = () => completeStep(7);
 
   const handleRestart = () => {
     setCurrentStep(1); setCompletedSteps([]); setProject(null);
@@ -153,13 +159,16 @@ export default function HomePage() {
           <Phase4Captions project={project} items={items} onDone={handleCaptionsDone} onBack={() => setCurrentStep(3)} />
         )}
         {currentStep === 5 && project && (
-          <Phase5Video project={project} items={items} onDone={handleVideosDone} onBack={() => setCurrentStep(4)} />
+          <Phase5Voice project={project} items={items} onDone={handleVoiceDone} onBack={() => setCurrentStep(4)} />
         )}
         {currentStep === 6 && project && (
-          <Phase6Editor project={project} items={items} onDone={handleEditorDone} onBack={() => setCurrentStep(5)} />
+          <Phase6Video project={project} items={items} onDone={handleVideosDone} onBack={() => setCurrentStep(5)} />
         )}
         {currentStep === 7 && project && (
-          <Phase7Export project={project} items={items} onRestart={handleRestart} onBack={() => setCurrentStep(6)} />
+          <Phase7Editor project={project} items={items} onDone={handleEditorDone} onBack={() => setCurrentStep(6)} />
+        )}
+        {currentStep === 8 && project && (
+          <Phase8Export project={project} items={items} onRestart={handleRestart} onBack={() => setCurrentStep(7)} />
         )}
         {!project && currentStep !== 1 && (
           <div className="text-center py-20">

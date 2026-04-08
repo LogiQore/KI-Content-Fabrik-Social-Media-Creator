@@ -34,6 +34,12 @@ export async function POST(req: NextRequest) {
     if (item.videoLocalPath) {
       md += `**Video:**  \n\`${item.videoLocalPath}\`\n\n`;
     }
+    if (item.voiceLocalPath) {
+      md += `**Voice-Over (Audio):**  \n\`${item.voiceLocalPath}\`\n\n`;
+    }
+    if (item.sprechtext) {
+      md += `**Sprechtext:**\n\n${item.sprechtext}\n\n`;
+    }
 
     if (item.caption) {
       md += `**Caption:**\n\n${item.caption}\n\n`;

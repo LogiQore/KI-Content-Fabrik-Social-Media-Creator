@@ -50,9 +50,10 @@ export default function Phase1Setup({ existingProject, onProjectCreated }: Phase
   const filteredStile = stileFilter === 'alle' ? stile : stile.filter(s => s.kategorie === stileFilter);
   const selectedStil = stile.find(s => s.id === bildstilId);
 
+  const [voiceOverMode, setVoiceOverMode] = useState(existingProject?.voiceOverMode || false);
+
   // Avatar-Auswahl-Helfer
   const selectNone      = () => { setAvatarPath(''); setAvatarName(''); };
-  const selectVoiceOver = () => { setAvatarPath('voice-over'); setAvatarName('Voice-Over Charakter'); };
   const selectAvatar    = (av: Avatar) => { setAvatarPath(av.path); setAvatarName(av.name); };
 
   const handleSubmit = async () => {
@@ -62,8 +63,8 @@ export default function Phase1Setup({ existingProject, onProjectCreated }: Phase
     const payload = {
       action: existingProject ? 'update' : 'create',
       ...(existingProject
-        ? { project: { ...existingProject, name, platforms, audience, theme, toneOfVoice, brandColors: brandColors.split(',').map(s => s.trim()).filter(Boolean), brandFont, userInstructions, bildstilId, bildstilPrompt, avatarPath, avatarName } }
-        : { name, platforms, audience, theme, toneOfVoice, brandColors: brandColors.split(',').map(s => s.trim()).filter(Boolean), brandFont, userInstructions, bildstilId, bildstilPrompt, avatarPath, avatarName }
+        ? { project: { ...existingProject, name, platforms, audience, theme, toneOfVoice, brandColors: brandColors.split(',').map(s => s.trim()).filter(Boolean), brandFont, userInstructions, bildstilId, bildstilPrompt, avatarPath, avatarName, voiceOverMode } }
+        : { name, platforms, audience, theme, toneOfVoice, brandColors: brandColors.split(',').map(s => s.trim()).filter(Boolean), brandFont, userInstructions, bildstilId, bildstilPrompt, avatarPath, avatarName, voiceOverMode }
       ),
     };
     try {
@@ -170,25 +171,13 @@ export default function Phase1Setup({ existingProject, onProjectCreated }: Phase
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {/* Option 1: Kein Charakter */}
+          {/* Option: Kein Charakter */}
           <button onClick={selectNone}
             className={`flex flex-col items-center gap-2 p-3 rounded-lg border text-sm transition-all
               ${!avatarPath ? 'border-purple-500 bg-purple-900/20' : 'border-[#2d2d44] hover:border-purple-700'}`}>
             <div className="w-16 h-16 bg-[#0f0f1a] rounded-lg flex items-center justify-center text-2xl">🚫</div>
             <span className="text-xs text-[#94a3b8] text-center">Kein Charakter</span>
             {!avatarPath && <span className="text-purple-400 text-xs">✓ Gewählt</span>}
-          </button>
-
-          {/* Option 2: Voice-Over Charakter */}
-          <button onClick={selectVoiceOver}
-            className={`flex flex-col items-center gap-2 p-3 rounded-lg border text-sm transition-all
-              ${avatarPath === 'voice-over' ? 'border-purple-500 bg-purple-900/20' : 'border-[#2d2d44] hover:border-purple-700'}`}>
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-900 to-blue-900 rounded-lg flex items-center justify-center text-3xl">🎙️</div>
-            <div className="text-center">
-              <div className="text-xs font-semibold text-[#f1f5f9]">Voice-Over</div>
-              <div className="text-xs text-[#94a3b8]">spricht in die Kamera</div>
-            </div>
-            {avatarPath === 'voice-over' && <span className="text-purple-400 text-xs">✓ Gewählt</span>}
           </button>
 
           {/* Avatar-Bilder aus /avatare/ */}
@@ -210,14 +199,30 @@ export default function Phase1Setup({ existingProject, onProjectCreated }: Phase
           </p>
         )}
 
-        {/* Gewählter Charakter */}
-        {avatarPath === 'voice-over' && (
-          <div className="mt-3 bg-blue-900/20 border border-blue-700/40 rounded-lg px-3 py-2">
-            <p className="text-xs text-blue-200">🎙️ Bilder werden so generiert, dass eine Person direkt in die Kamera spricht (Voice-Over Stil)</p>
-          </div>
-        )}
-        {avatarPath && avatarPath !== 'voice-over' && (
+        {/* Voice-Over Toggle (unabhaengig vom Avatar) */}
+        <div className="mt-3">
+          <button onClick={() => setVoiceOverMode(!voiceOverMode)}
+            className={`w-full flex items-center gap-3 p-3 rounded-lg border text-sm transition-all
+              ${voiceOverMode ? 'border-blue-500 bg-blue-900/20' : 'border-[#2d2d44] hover:border-blue-700'}`}>
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-900 to-blue-900 rounded-lg flex items-center justify-center text-xl flex-shrink-0">🎙️</div>
+            <div className="flex-1 text-left">
+              <div className="text-xs font-semibold text-[#f1f5f9]">Voice-Over Modus</div>
+              <div className="text-xs text-[#94a3b8]">Bilder werden fuer direkte Kamera-Ansprache optimiert (kombinierbar mit Avatar)</div>
+            </div>
+            <div className={`w-10 h-5 rounded-full flex items-center transition-all ${voiceOverMode ? 'bg-blue-500 justify-end' : 'bg-[#2d2d44] justify-start'}`}>
+              <div className="w-4 h-4 bg-white rounded-full mx-0.5" />
+            </div>
+          </button>
+        </div>
+
+        {/* Status-Hinweise */}
+        {avatarPath && (
           <p className="mt-2 text-xs text-green-400">✓ Avatar: <span className="font-semibold">{avatarName}</span> — wird als Referenzbild bei der Bildgenerierung verwendet</p>
+        )}
+        {voiceOverMode && (
+          <div className="mt-2 bg-blue-900/20 border border-blue-700/40 rounded-lg px-3 py-2">
+            <p className="text-xs text-blue-200">🎙️ Voice-Over aktiv — Bilder werden fuer Kamera-Ansprache optimiert{avatarPath ? ` (mit Avatar "${avatarName}")` : ''}</p>
+          </div>
         )}
       </div>
 

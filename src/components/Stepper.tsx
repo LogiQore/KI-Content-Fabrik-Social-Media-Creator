@@ -5,9 +5,10 @@ const STEPS = [
   { id: 2, label: 'Strategie', icon: '🧠' },
   { id: 3, label: 'Bilder', icon: '🎨' },
   { id: 4, label: 'Texte', icon: '✍️' },
-  { id: 5, label: 'Videos', icon: '🎬' },
-  { id: 6, label: 'Editor', icon: '✂️' },
-  { id: 7, label: 'Export', icon: '📤' },
+  { id: 5, label: 'Voice', icon: '🎤' },
+  { id: 6, label: 'Videos', icon: '🎬' },
+  { id: 7, label: 'Editor', icon: '✂️' },
+  { id: 8, label: 'Export', icon: '📤' },
 ];
 
 interface StepperProps {
